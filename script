@@ -57,8 +57,7 @@ local plr = game:GetService("Players").LocalPlayer
 local char = plr.Character or plr.CharacterAdded:Wait()
 char:WaitForChild("Humanoid")
 char:WaitForChild("HumanoidRootPart")
--- Why 1.4? idk but it works.
-task.wait(1.4)
+task.wait(2)
 
 -- Initialize Luraph globals if they do not exist.
 loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
@@ -4239,7 +4238,7 @@ return LPH_NO_VIRTUALIZE(function()
 			Position = UDim2.new(0, 100, 0, -25),
 			Size = UDim2.new(0, 213, 0, 20),
 			ZIndex = 200,
-			Visible = true,
+			Visible = false,
 			Parent = ScreenGui,
 		})
 
@@ -69123,11 +69122,6 @@ return LPH_NO_VIRTUALIZE(function()
 
 		lastUpdate = os.clock()
 
-		-- If suspend flag is set, skip expensive watermark work.
-		if shared.Lycoris and shared.Lycoris.suspend_watermark then
-			return
-		end
-
 		local localPlayer = players.LocalPlayer
 		if not localPlayer then
 			return
@@ -73853,8 +73847,8 @@ local renderStepped = Signal.new(runService.RenderStepped)
 local menuMaid = Maid.new()
 
 -- Constants.
-local VERSION = "1.0.4"
-local WATERMARK_TITLE = "YSL METHOD"
+local VERSION = "1.0.5"
+local WATERMARK_TITLE = "Lycoris"
 
 -- Get game name dynamically.
 local gameName = "Unknown"
@@ -73864,10 +73858,10 @@ pcall(function()
 	gameName = productInfo.Name or "Unknown"
 end)
 
-local MENU_TITLE = "YSL METHOD | " .. gameName
+local MENU_TITLE = "Lycoris | " .. gameName
 
 if LRM_UserNote then
-	MENU_TITLE = string.format("(v%s) YSL METHOD | %s", VERSION, gameName)
+	MENU_TITLE = string.format("(v%s) Lycoris | %s", VERSION, gameName)
 end
 
 ---Initialize menu.
@@ -73899,114 +73893,22 @@ function Menu.init()
 	})
 
 	-- Initialize all tabs. Don't initialize them if we have the 'exploit_tester' role.
-	-- Suspend watermark while constructing tabs (many UI elements created).
-	shared.Lycoris = shared.Lycoris or {}
-	local _tabs_prev_suspend = shared.Lycoris.suspend_watermark
-	shared.Lycoris.suspend_watermark = true
-	pcall(function()
-		CombatTab.init(window)
-		GameTab.init(window)
-		VisualsTab.init(window)
-		AutomationTab.init(window)
-		ExploitTab.init(window)
-		LycorisTab.init(window)
-	end)
-	shared.Lycoris.suspend_watermark = _tabs_prev_suspend
+	CombatTab.init(window)
 
-	-- Builder tab: move build-related UI here.
-	local builderTab = window:AddTab("Builder")
-
-	-- Builder Tools group.
-	local builderTools = builderTab:AddLeftGroupbox("Builder Tools")
-	builderTools:AddToggle("BuildStealer", {
-		Text = "Build Stealer",
-		Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
-		Default = false,
-	})
-
-	-- Build Assistance group.
-	local builderAssistance = builderTab:AddRightGroupbox("Build Assistance")
-	builderAssistance:AddToggle("BuildAssistance", {
-		Text = "Build Assistance",
-		Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
-		Default = false,
-	})
-
-	local buildAssistanceDepBox = builderAssistance:AddDependencyBox()
-
-	local sdoToggle = buildAssistanceDepBox:AddToggle("ShrineDetectionOverride", {
-		Text = "Shrine Detection Override",
-		Tooltip = "Auto-detection for shrine can be wrong especially when it refunds your points. You can use this to override the current state.",
-		Default = true,
-	})
-
-	local sdoDepBox = buildAssistanceDepBox:AddDependencyBox()
-
-	sdoDepBox:AddDropdown("ShrineOverrideState", {
-		Text = "Shrine Override State",
-		Tooltip = "The shrine state to override to.",
-		Default = 1,
-		Values = { "Pre-Shrine", "Post-Shrine", "Must Shrine" },
-	})
-
-	sdoDepBox:SetupDependencies({
-		{ sdoToggle, true },
-	})
-
-	buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
-		Text = "Build Assistance Link",
-		Tooltip = "The builder link that will be used to assist with builds.",
-		Placeholder = "Enter your builder link here.",
-		Finished = true,
-		Callback = function(value)
-			local dresponse = request({
-				Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
-			})
-
-			if not dresponse or not dresponse.Success or not dresponse.Body then
-				return Logger.notify("Invalid response while fetching data response.")
-			end
-
-			local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
-			if not dsuccess or not dresult then
-				return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
-			end
-
-			Logger.notify("Successfully fetched Deepwoken data.")
-
-			local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
-			local bresponse = request({
-				Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
-			})
-
-			if not bresponse or not bresponse.Success or not bresponse.Body then
-				return Logger.notify("Invalid response while fetching builder response.")
-			end
-
-			local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
-			if not bsuccess or not bresult then
-				return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
-			end
-
-			Logger.notify("Successfully created BuilderData object.")
-
-			Visuals.bdata = BuilderData.new(bresult, dresult)
-		end,
-	})
+	GameTab.init(window)
+	VisualsTab.init(window)
+	AutomationTab.init(window)
+	ExploitTab.init(window)
+	LycorisTab.init(window)
 
 	-- Last update.
 	local lastUpdate = os.clock()
 
-	-- Update watermark (throttled + skip unchanged to avoid heavy UI hiccups).
-	local lastWatermark = ""
+	-- Update watermark.
 	menuMaid:add(renderStepped:connect(
 		"Menu_WatermarkUpdate",
 		LPH_NO_VIRTUALIZE(function()
-			if os.clock() - lastUpdate <= 1.0 then
+			if os.clock() - lastUpdate <= 0.5 then
 				return
 			end
 
@@ -74046,17 +73948,8 @@ function Menu.init()
 				str = str .. string.format(" | %s", mouse and mouse.Target and mouse.Target:GetFullName() or "N/A")
 			end
 
-			-- Only update if changed.
-			if str == lastWatermark then
-				return
-			end
-
-			lastWatermark = str
-			if Library and type(Library.SetWatermark) == "function" then
-				pcall(function()
-					Library:SetWatermark(str)
-				end)
-			end
+			-- Set watermark.
+			Library:SetWatermark(str)
 		end)
 	))
 
@@ -74098,17 +73991,8 @@ function Menu.init()
 	-- Configure Library.
 	Library.ToggleKeybind = Options.MenuKeybind
 
-	-- Temporarily suspend watermark updates while loading configs to avoid UI stalls.
-	shared.Lycoris = shared.Lycoris or {}
-	local _prev_suspend = shared.Lycoris.suspend_watermark
-	shared.Lycoris.suspend_watermark = true
-
-	pcall(function()
-		SaveManager:LoadAutoloadConfig()
-	end)
-
-	-- restore suspend state after load
-	shared.Lycoris.suspend_watermark = _prev_suspend
+	-- Load auto-load config.
+	SaveManager:LoadAutoloadConfig()
 
 	-- Log menu initialization.
 	Logger.warn("Menu initialized.")
@@ -74215,110 +74099,6 @@ function LycorisTab.initCheatSettingsSection(groupbox)
 		end
 	end)
 
-	groupbox:AddButton({
-		Text = "No Textures",
-		DoubleClick = true,
-		Func = function()
-			pcall(function()
-				local ToDisable = {
-					Textures = true,
-					VisualEffects = true,
-					Parts = true,
-					Particles = true,
-					Sky = true,
-				}
-
-				local ToEnable = {
-					FullBright = false,
-				}
-
-				local backup = {}
-
-				for _, v in next, game:GetDescendants() do
-					if ToDisable.Parts and (v:IsA("Part") or v:IsA("Union") or v:IsA("BasePart")) then
-						backup[#backup + 1] = { inst = v, prop = "Material", val = v.Material }
-						v.Material = Enum.Material.SmoothPlastic
-					end
-
-					if ToDisable.Particles and (v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Explosion") or v:IsA("Sparkles") or v:IsA("Fire")) then
-						backup[#backup + 1] = { inst = v, prop = "Enabled", val = v.Enabled }
-						v.Enabled = false
-					end
-
-					if ToDisable.VisualEffects and (v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect")) then
-						backup[#backup + 1] = { inst = v, prop = "Enabled", val = v.Enabled }
-						v.Enabled = false
-					end
-
-					if ToDisable.Textures and (v:IsA("Decal") or v:IsA("Texture")) then
-						backup[#backup + 1] = { inst = v, prop = "Texture", val = v.Texture }
-						v.Texture = ""
-					end
-
-					if ToDisable.Sky and v:IsA("Sky") then
-						backup[#backup + 1] = { inst = v, prop = "Parent", val = v.Parent }
-						v.Parent = nil
-					end
-				end
-
-				shared.Lycoris = shared.Lycoris or {}
-				shared.Lycoris.no_textures_backup = backup
-
-				Logger.notify("Effects Disabler: disabled %i objects (backup saved).", #backup)
-
-				if ToEnable.FullBright then
-					local Lighting = game:GetService("Lighting")
-					Lighting.FogColor = Color3.fromRGB(255, 255, 255)
-					Lighting.FogEnd = math.huge
-					Lighting.FogStart = math.huge
-					Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-					Lighting.Brightness = 5
-					Lighting.ColorShift_Bottom = Color3.fromRGB(255, 255, 255)
-					Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
-					Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-					Lighting.Outlines = true
-				end
-			end)
-		end,
-	})
-
-	groupbox:AddButton({
-		Text = "Restore Textures",
-		DoubleClick = true,
-		Func = function()
-			pcall(function()
-				local backup = shared.Lycoris and shared.Lycoris.no_textures_backup
-				if not backup or #backup == 0 then
-					return Logger.notify("No backup found to restore.")
-				end
-
-				local restored = 0
-				for _, entry in next, backup do
-					local inst = entry.inst
-					local prop = entry.prop
-					local val = entry.val
-					if inst and typeof(inst) == "Instance" then
-						if prop == "Parent" then
-							pcall(function()
-								if val and typeof(val) == "Instance" then
-									inst.Parent = val
-								else
-									inst.Parent = game:GetService("Lighting")
-								end
-							end)
-						else
-							pcall(function() inst[prop] = val end)
-						end
-						restored = restored + 1
-					end
-				end
-
-				shared.Lycoris.no_textures_backup = nil
-				Logger.notify("Effects Disabler: restored %i objects.", restored)
-			end)
-		end,
-	})
-
 	groupbox:AddButton("Unload Cheat", function()
 		shared.Lycoris.detach()
 	end)
@@ -74353,7 +74133,7 @@ function LycorisTab.initUISettingsSection(groupbox)
 
 	keybindFrameLabel:AddKeyPicker("KeybindList", {
 		Default = "N/A",
-		Mode = "On",
+		Mode = "Off",
 		NoUI = true,
 		Text = "Keybind List",
 		Callback = function(Value)
@@ -74365,7 +74145,7 @@ function LycorisTab.initUISettingsSection(groupbox)
 
 	watermarkFrameLabel:AddKeyPicker("Watermark", {
 		Default = "N/A",
-		Mode = "On",
+		Mode = "Off",
 		NoUI = true,
 		Text = "Watermark",
 		Callback = function(Value)
@@ -74540,9 +74320,7 @@ return LPH_NO_VIRTUALIZE(function()
 					continue
 				end
 
-				local _toggles = (getgenv and getgenv().Toggles) or Toggles or {}
-				local t = _toggles[idx] or toggle
-				table.insert(data.objects, self.Parser[t.Type].Save(idx, t))
+				table.insert(data.objects, self.Parser[toggle.Type].Save(idx, toggle))
 			end
 
 			for idx, option in next, Options do
@@ -74553,9 +74331,7 @@ return LPH_NO_VIRTUALIZE(function()
 					continue
 				end
 
-				local _options = (getgenv and getgenv().Options) or Options or {}
-				local o = _options[idx] or option
-				table.insert(data.objects, self.Parser[o.Type].Save(idx, o))
+				table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
 			end
 
 			local success, encoded = pcall(httpService.JSONEncode, httpService, data)
@@ -74568,264 +74344,79 @@ return LPH_NO_VIRTUALIZE(function()
 		end
 
 		function SaveManager:Load(name)
-			shared.Lycoris = shared.Lycoris or {}
-			local _prev = shared.Lycoris.suspend_watermark
-			shared.Lycoris.suspend_watermark = true
-
-			local ok, res1, res2 = pcall(function()
-				if not name then
-					return false, "no config file is selected"
-				end
-
-				local file = self.Folder .. "/" .. name .. ".json"
-				if not isfile(file) then
-					return false, "invalid file"
-				end
-
-				local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
-				if not success then
-					return false, "decode error"
-				end
-
-				if decoded.keybindFramePosition then
-					self.Library.KeybindFrame.Position = uDim2Import(decoded.keybindFramePosition)
-				end
-
-				if decoded.watermarkFramePosition then
-					self.Library.Watermark.Position = uDim2Import(decoded.watermarkFramePosition)
-				end
-
-				if decoded.infoLoggerFramePosition then
-					self.Library.InfoLoggerFrame.Position = uDim2Import(decoded.infoLoggerFramePosition)
-				end
-
-				if decoded.infoLoggerBlacklistHistory then
-					self.Library.InfoLoggerData.KeyBlacklistHistory = decoded.infoLoggerBlacklistHistory
-				end
-
-				if decoded.animationVisualizerFramePosition then
-					self.Library.AnimationVisualizerFrame.Position = uDim2Import(decoded.animationVisualizerFramePosition)
-				end
-
-				local timingList = Options["TimingOverrideList"]
-
-				if decoded.overrideData and timingList then
-					self.Library.OverrideData = decoded.overrideData
-
-					local values = {}
-
-					for rname, _ in next, decoded.overrideData do
-						values[#values + 1] = rname
-					end
-
-					timingList:SetValues(values)
-				end
-
-				-- Process config objects in small batches to avoid spawning thousands of tasks
-				-- which can spike memory. We pcall each loader and yield occasionally.
-				local processed = 0
-				local function normalizeOption(opt)
-					if type(opt) ~= "table" then
-						return opt
-					end
-
-					-- Canonicalize common key name variations (Type/Idx/Value/Key/Text etc.)
-					if opt.Type and not opt.type then
-						opt.type = opt.Type
-					end
-					if opt.Idx and not opt.idx then
-						opt.idx = opt.Idx
-					end
-					if opt.Index and not opt.idx then
-						opt.idx = opt.Index
-					end
-					if opt.Value and opt.value == nil then
-						opt.value = opt.Value
-					end
-					if opt.Text and opt.text == nil then
-						opt.text = opt.Text
-					end
-					if opt.Key and opt.key == nil then
-						opt.key = opt.Key
-					end
-					if opt.Mode and opt.mode == nil then
-						opt.mode = opt.Mode
-					end
-					if opt.Values and opt.values == nil then
-						opt.values = opt.Values
-					end
-					if opt.Hue and opt.hue == nil then
-						opt.hue = opt.Hue
-					end
-					if opt.Sat and opt.sat == nil then
-						opt.sat = opt.Sat
-					end
-					if opt.Vib and opt.vib == nil then
-						opt.vib = opt.Vib
-					end
-					if opt.Transparency and opt.transparency == nil then
-						opt.transparency = opt.Transparency
-					end
-					if opt.Rainbow and opt.rainbow == nil then
-						opt.rainbow = opt.Rainbow
-					end
-
-					-- Coerce slider values saved as strings to numbers.
-					if opt.type == "Slider" and opt.value ~= nil and type(opt.value) == "string" then
-						local n = tonumber(opt.value)
-						if n then
-							opt.value = n
-						end
-					end
-
-					-- Dropdown: false may have been saved; normalize to nil.
-					if opt.type == "Dropdown" then
-						if opt.value == false then
-							opt.value = nil
-						end
-					end
-
-					-- KeyPicker: map "N/A" to nil.
-					if opt.type == "KeyPicker" and opt.key == "N/A" then
-						opt.key = nil
-					end
-
-					-- ColorPicker: coerce numeric fields.
-					if opt.type == "ColorPicker" then
-						if type(opt.hue) == "string" then
-							opt.hue = tonumber(opt.hue)
-						end
-						if type(opt.sat) == "string" then
-							opt.sat = tonumber(opt.sat)
-						end
-						if type(opt.vib) == "string" then
-							opt.vib = tonumber(opt.vib)
-						end
-						if type(opt.transparency) == "string" then
-							opt.transparency = tonumber(opt.transparency)
-						end
-						if type(opt.rainbow) == "string" then
-							opt.rainbow = (opt.rainbow == "true")
-						end
-					end
-
-					-- Toggle: coerce textual booleans.
-					if opt.type == "Toggle" and type(opt.value) == "string" then
-						if opt.value == "true" then
-							opt.value = true
-						elseif opt.value == "false" then
-							opt.value = false
-						else
-							local n = tonumber(opt.value)
-							if n then
-								opt.value = (n ~= 0)
-							end
-						end
-					end
-
-					-- Input: ensure text is a string.
-					if opt.type == "Input" and opt.text ~= nil and type(opt.text) ~= "string" then
-						opt.text = tostring(opt.text)
-					end
-
-					return opt
-				end
-
-				-- Ensure we use the runtime registries (or fallbacks) while loading so
-				-- parser handlers referencing `Options`/`Toggles` resolve correctly.
-				local _runtimeOptions = (getgenv and getgenv().Options) or Options or {}
-				local _runtimeToggles = (getgenv and getgenv().Toggles) or Toggles or {}
-				local _oldOptions = Options
-				local _oldToggles = Toggles
-				Options = _runtimeOptions
-				Toggles = _runtimeToggles
-
-				for _, option in next, decoded.objects do
-					option = normalizeOption(option)
-					if not (option and option.type and self.Parser[option.type]) then
-						continue
-					end
-
-					-- Resolve idx with fallbacks (string/number variants) so keys match runtime tables.
-					local resolvedIdx = nil
-					local candidates = { option.idx, tostring(option.idx), tonumber(option.idx) }
-					for _, c in next, candidates do
-						if c ~= nil then
-							if Options and Options[c] then
-								resolvedIdx = c
-								break
-							end
-							if Toggles and Toggles[c] then
-								resolvedIdx = c
-								break
-							end
-						end
-					end
-
-					if not resolvedIdx then
-						warn("SaveManager: no matching Option/Toggle for idx", option.idx, "type", option.type)
-						processed = processed + 1
-						if processed % 25 == 0 then
-							task.wait()
-						end
-						continue
-					end
-
-					-- If Dropdown, ensure values set before setting value.
-					local ok, err
-					if option.type == "Dropdown" then
-						ok, err = pcall(function()
-							if Options and Options[resolvedIdx] and option.values then
-								Options[resolvedIdx]:SetValues(option.values)
-							end
-							if Options and Options[resolvedIdx] then
-								Options[resolvedIdx]:SetValue(option.value)
-							end
-						end)
-					else
-						ok, err = pcall(self.Parser[option.type].Load, self.Parser[option.type], resolvedIdx, option)
-					end
-
-					if not ok then
-						warn("SaveManager: failed to load option", option.type, resolvedIdx, err)
-					end
-
-					processed = processed + 1
-					if processed % 25 == 0 then
-						task.wait()
-					end
-				end
-
-				if decoded.infoLoggerBlacklist then
-					self.Library.InfoLoggerData.KeyBlacklistList = decoded.infoLoggerBlacklist
-					self.Library:RefreshInfoLogger()
-					if Options and Options.BlacklistedKeys then
-						Options.BlacklistedKeys:SetValues(self.Library:KeyBlacklists())
-					end
-				end
-
-				if decoded.infoLoggerCycle then
-					self.Library.InfoLoggerData.InfoLoggerCycle = decoded.infoLoggerCycle
-					self.Library:RefreshInfoLogger()
-					if Options and Options.BlacklistedKeys then
-						Options.BlacklistedKeys:SetValues(self.Library:KeyBlacklists())
-					end
-				end
-
-				return true
-			end)
-
-			shared.Lycoris.suspend_watermark = _prev
-
-			-- Restore original globals so we don't unexpectedly override runtime state.
-			Options = _oldOptions
-			Toggles = _oldToggles
-
-			if not ok then
-				return false, tostring(res1)
+			if not name then
+				return false, "no config file is selected"
 			end
 
-			return res1, res2
+			local file = self.Folder .. "/" .. name .. ".json"
+			if not isfile(file) then
+				return false, "invalid file"
+			end
+
+			local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
+			if not success then
+				return false, "decode error"
+			end
+
+			if decoded.keybindFramePosition then
+				self.Library.KeybindFrame.Position = uDim2Import(decoded.keybindFramePosition)
+			end
+
+			if decoded.watermarkFramePosition then
+				self.Library.Watermark.Position = uDim2Import(decoded.watermarkFramePosition)
+			end
+
+			if decoded.infoLoggerFramePosition then
+				self.Library.InfoLoggerFrame.Position = uDim2Import(decoded.infoLoggerFramePosition)
+			end
+
+			if decoded.infoLoggerBlacklistHistory then
+				self.Library.InfoLoggerData.KeyBlacklistHistory = decoded.infoLoggerBlacklistHistory
+			end
+
+			if decoded.animationVisualizerFramePosition then
+				self.Library.AnimationVisualizerFrame.Position = uDim2Import(decoded.animationVisualizerFramePosition)
+			end
+
+			local timingList = Options["TimingOverrideList"]
+
+			if decoded.overrideData and timingList then
+				self.Library.OverrideData = decoded.overrideData
+
+				local values = {}
+
+				for rname, _ in next, decoded.overrideData do
+					values[#values + 1] = rname
+				end
+
+				timingList:SetValues(values)
+			end
+
+			for _, option in next, decoded.objects do
+				if self.Parser[option.type] then
+					task.spawn(function()
+						self.Parser[option.type].Load(option.idx, option)
+					end) -- task.spawn() so the config loading wont get stuck.
+				end
+			end
+
+			if decoded.infoLoggerBlacklist then
+				self.Library.InfoLoggerData.KeyBlacklistList = decoded.infoLoggerBlacklist
+				self.Library:RefreshInfoLogger()
+				if Options and Options.BlacklistedKeys then
+					Options.BlacklistedKeys:SetValues(self.Library:KeyBlacklists())
+				end
+			end
+
+			if decoded.infoLoggerCycle then
+				self.Library.InfoLoggerData.InfoLoggerCycle = decoded.infoLoggerCycle
+				self.Library:RefreshInfoLogger()
+				if Options and Options.BlacklistedKeys then
+					Options.BlacklistedKeys:SetValues(self.Library:KeyBlacklists())
+				end
+			end
+
+			return true
 		end
 
 		function SaveManager:IgnoreThemeSettings()
@@ -74968,6 +74559,37 @@ return LPH_NO_VIRTUALIZE(function()
 			if isfile(self.Folder .. "/autoload.txt") then
 				local name = readfile(self.Folder .. "/autoload.txt")
 				SaveManager.AutoloadLabel:SetText("Current autoload config: " .. name)
+			end
+
+			-- Add quick toggles for Keybind and Watermark visibility in the Config Manager.
+			section:AddDivider()
+			section:AddToggle("SaveManager_ShowKeybind", { Text = "Show Keybinds", Default = true })
+			section:AddToggle("SaveManager_ShowWatermark", { Text = "Show Watermark", Default = true })
+
+			-- Wire up callbacks / initial values if the library is present.
+			if self.Library then
+				-- Keybind toggle
+				if Options and Options.SaveManager_ShowKeybind then
+					Options.SaveManager_ShowKeybind:OnChanged(function(val)
+						if self.Library.KeybindFrame then
+							self.Library.KeybindFrame.Visible = val
+						end
+					end)
+					-- Initialize to current state
+					Options.SaveManager_ShowKeybind:SetValue(self.Library.KeybindFrame and self.Library.KeybindFrame.Visible or false)
+				end
+
+				-- Watermark toggle
+				if Options and Options.SaveManager_ShowWatermark then
+					Options.SaveManager_ShowWatermark:OnChanged(function(val)
+						if self.Library.SetWatermarkVisibility then
+							self.Library:SetWatermarkVisibility(val)
+						elseif self.Library.Watermark then
+							self.Library.Watermark.Visible = val
+						end
+					end)
+					Options.SaveManager_ShowWatermark:SetValue(self.Library.Watermark and self.Library.Watermark.Visible or false)
+				end
 			end
 
 			SaveManager:SetIgnoreIndexes({ "SaveManager_ConfigList", "SaveManager_ConfigName" })
@@ -75613,6 +75235,82 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 		Text = "Sanity Tracker",
 		Tooltip = "Create a tracker marking how much sanity you have left.",
 		Default = false,
+	})
+
+	local buildAssistanceToggle = groupbox:AddToggle("BuildAssistance", {
+		Text = "Build Assistance",
+		Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
+		Default = false,
+	})
+
+	local buildAssistanceDepBox = groupbox:AddDependencyBox()
+
+	local sdoToggle = buildAssistanceDepBox:AddToggle("ShrineDetectionOverride", {
+		Text = "Shrine Detection Override",
+		Tooltip = "Auto-detection for shrine can be wrong especially when it refunds your points. You can use this to override the current state.",
+		Default = true,
+	})
+
+	local sdoDepBox = buildAssistanceDepBox:AddDependencyBox()
+
+	sdoDepBox:AddDropdown("ShrineOverrideState", {
+		Text = "Shrine Override State",
+		Tooltip = "The shrine state to override to.",
+		Default = 1,
+		Values = { "Pre-Shrine", "Post-Shrine", "Must Shrine" },
+	})
+
+	sdoDepBox:SetupDependencies({
+		{ sdoToggle, true },
+	})
+
+	buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
+		Text = "Build Assistance Link",
+		Tooltip = "The builder link that will be used to assist with builds.",
+		Placeholder = "Enter your builder link here.",
+		Finished = true,
+		Callback = function(value)
+			local dresponse = request({
+				Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
+				Method = "GET",
+				Headers = { ["Content-Type"] = "application/json" },
+			})
+
+			if not dresponse or not dresponse.Success or not dresponse.Body then
+				return Logger.notify("Invalid response while fetching data response.")
+			end
+
+			local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
+			if not dsuccess or not dresult then
+				return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
+			end
+
+			Logger.notify("Successfully fetched Deepwoken data.")
+
+			local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
+			local bresponse = request({
+				Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
+				Method = "GET",
+				Headers = { ["Content-Type"] = "application/json" },
+			})
+
+			if not bresponse or not bresponse.Success or not bresponse.Body then
+				return Logger.notify("Invalid response while fetching builder response.")
+			end
+
+			local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
+			if not bsuccess or not bresult then
+				return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
+			end
+
+			Logger.notify("Successfully created BuilderData object.")
+
+			Visuals.bdata = BuilderData.new(bresult, dresult)
+		end,
+	})
+
+	buildAssistanceDepBox:SetupDependencies({
+		{ buildAssistanceToggle, true },
 	})
 end
 
@@ -77108,7 +76806,11 @@ function GameTab.initPlayerMonitoringSection(groupbox)
 		Default = false,
 	})
 
-
+	groupbox:AddToggle("BuildStealer", {
+		Text = "Build Stealer",
+		Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
+		Default = false,
+	})
 
 	groupbox:AddToggle("ShowHiddenPlayers", {
 		Text = "Show Hidden Players",
