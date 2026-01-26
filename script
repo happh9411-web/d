@@ -74701,28 +74701,57 @@ return LPH_NO_VIRTUALIZE(function()
 
 				for _, option in next, decoded.objects do
 					option = normalizeOption(option)
-					if option and option.type and self.Parser[option.type] then
-						local ok, err
-						-- Dropdown requires values to be set before Value to avoid mismatches.
-						if option.type == "Dropdown" then
-							ok, err = pcall(function()
-								if Options and Options[option.idx] and option.values then
-									Options[option.idx]:SetValues(option.values)
-								end
-								if Options and Options[option.idx] then
-									Options[option.idx]:SetValue(option.value)
-								end
-							end)
-						else
-							ok, err = pcall(self.Parser[option.type].Load, self.Parser[option.type], option.idx, option)
+					if not (option and option.type and self.Parser[option.type]) then
+						continue
+					end
+
+					-- Resolve idx with fallbacks (string/number variants) so keys match runtime tables.
+					local resolvedIdx = nil
+					local candidates = { option.idx, tostring(option.idx), tonumber(option.idx) }
+					for _, c in next, candidates do
+						if c ~= nil then
+							if Options and Options[c] then
+								resolvedIdx = c
+								break
+							end
+							if Toggles and Toggles[c] then
+								resolvedIdx = c
+								break
+							end
 						end
-						if not ok then
-							warn("SaveManager: failed to load option", option.type, option.idx, err)
-						end
+					end
+
+					if not resolvedIdx then
+						warn("SaveManager: no matching Option/Toggle for idx", option.idx, "type", option.type)
 						processed = processed + 1
 						if processed % 25 == 0 then
 							task.wait()
 						end
+						continue
+					end
+
+					-- If Dropdown, ensure values set before setting value.
+					local ok, err
+					if option.type == "Dropdown" then
+						ok, err = pcall(function()
+							if Options and Options[resolvedIdx] and option.values then
+								Options[resolvedIdx]:SetValues(option.values)
+							end
+							if Options and Options[resolvedIdx] then
+								Options[resolvedIdx]:SetValue(option.value)
+							end
+						end)
+					else
+						ok, err = pcall(self.Parser[option.type].Load, self.Parser[option.type], resolvedIdx, option)
+					end
+
+					if not ok then
+						warn("SaveManager: failed to load option", option.type, resolvedIdx, err)
+					end
+
+					processed = processed + 1
+					if processed % 25 == 0 then
+						task.wait()
 					end
 				end
 
