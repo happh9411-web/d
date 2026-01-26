@@ -76504,7 +76504,7 @@ function AutomationTab.initAutoBankSection(groupbox)
 	groupbox:AddDropdown("AutoBank_Item", {
 		Text = "Item To Deposit",
 		Default = 1,
-		Values = { "Browncap", "Moonseye", "Idol of Yunshul", "Armorer's Needle" },
+		Values = { "Browncap", "Moonseye Tome", "Idol of Yun'shul", "Armorer's Needle" },
 	})
 end
 
