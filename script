@@ -74152,6 +74152,38 @@ function LycorisTab.initUISettingsSection(groupbox)
 			Library:SetWatermarkVisibility(Value)
 		end,
 	})
+
+	-- Add on/off toggles for showing keybind list and watermark in Settings tab.
+	local _kbToggle = groupbox:AddToggle("ShowKeybinds", {
+		Text = "Show Keybinds",
+		Default = Library.KeybindFrame and Library.KeybindFrame.Visible or false,
+		Callback = function(val)
+			if Library and Library.KeybindFrame then
+				Library.KeybindFrame.Visible = val
+			end
+		end,
+	})
+
+	local _wmToggle = groupbox:AddToggle("ShowWatermark", {
+		Text = "Show Watermark",
+		Default = Library.Watermark and Library.Watermark.Visible or false,
+		Callback = function(val)
+			if Library and Library.SetWatermarkVisibility then
+				Library:SetWatermarkVisibility(val)
+			elseif Library and Library.Watermark then
+				Library.Watermark.Visible = val
+			end
+		end,
+	})
+
+	-- Ensure Options entries are initialized to current state.
+	if Options and Options.ShowKeybinds then
+		Options.ShowKeybinds:SetValue(Library.KeybindFrame and Library.KeybindFrame.Visible or false)
+	end
+
+	if Options and Options.ShowWatermark then
+		Options.ShowWatermark:SetValue(Library.Watermark and Library.Watermark.Visible or false)
+	end
 end
 
 ---Initialize tab.
