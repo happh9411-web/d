@@ -74302,8 +74302,8 @@ function LycorisTab.initUISettingsSection(groupbox)
 	end
 
 	-- Add remove/restore buttons with confirmation (double-click safety)
-	section:AddDivider()
-	section:AddButton({
+	groupbox:AddDivider()
+	groupbox:AddButton({
 		Text = "Remove Textures",
 		Func = function()
 			removeTextures()
@@ -74312,7 +74312,7 @@ function LycorisTab.initUISettingsSection(groupbox)
 		DoubleClickText = "Click again to confirm",
 	})
 
-	section:AddButton({
+	groupbox:AddButton({
 		Text = "Restore Textures",
 		Func = function()
 			restoreTextures()
@@ -76231,95 +76231,37 @@ local BuilderData = require("Features/Visuals/Objects/BuilderData")
 ---Initialize Builder tab.
 ---@param window table
 function BuilderTab.init(window)
-	local tab = window:AddTab("Builder")
+	local ok, tab = pcall(function()
+		return window:AddTab("Builder")
+	end)
 
-	-- Build Assistance section (left)
-	local assistBox = tab:AddLeftGroupbox("Build Assistance")
+	if not ok or not tab then
+		Logger.trace("BuilderTab.init: failed to create tab")
+		return
+	end
 
-	assistBox:AddToggle("BuildAssistance", {
-		Text = "Build Assistance",
-		Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
-		Default = false,
-	})
-
-	local buildAssistanceDepBox = assistBox:AddDependencyBox()
-
-	local sdoToggle = buildAssistanceDepBox:AddToggle("ShrineDetectionOverride", {
-		Text = "Shrine Detection Override",
-		Tooltip = "Auto-detection for shrine can be wrong especially when it refunds your points. You can use this to override the current state.",
-		Default = true,
-	})
-
-	local sdoDepBox = buildAssistanceDepBox:AddDependencyBox()
-
-	sdoDepBox:AddDropdown("ShrineOverrideState", {
-		Text = "Shrine Override State",
-		Tooltip = "The shrine state to override to.",
-		Default = 1,
-		Values = { "Pre-Shrine", "Post-Shrine", "Must Shrine" },
-	})
-
-	sdoDepBox:SetupDependencies({
-		{ sdoToggle, true },
-	})
-
-	buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
-		Text = "Build Assistance Link",
-		Tooltip = "The builder link that will be used to assist with builds.",
-		Placeholder = "Enter your builder link here.",
-		Finished = true,
-		Callback = function(value)
-			local dresponse = request({
-				Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
+	-- Create minimal, defensive UI to avoid init-time failures.
+	pcall(function()
+		local left = tab:AddLeftGroupbox("Build Assistance")
+		if left then
+			left:AddToggle("BuildAssistance", {
+				Text = "Build Assistance",
+				Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
+				Default = false,
 			})
+		end
+	end)
 
-			if not dresponse or not dresponse.Success or not dresponse.Body then
-				return Logger.notify("Invalid response while fetching data response.")
-			end
-
-			local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
-			if not dsuccess or not dresult then
-				return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
-			end
-
-			Logger.notify("Successfully fetched Deepwoken data.")
-
-			local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
-			local bresponse = request({
-				Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
+	pcall(function()
+		local right = tab:AddRightGroupbox("Build Stealer")
+		if right then
+			right:AddToggle("BuildStealer", {
+				Text = "Build Stealer",
+				Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
+				Default = false,
 			})
-
-			if not bresponse or not bresponse.Success or not bresponse.Body then
-				return Logger.notify("Invalid response while fetching builder response.")
-			end
-
-			local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
-			if not bsuccess or not bresult then
-				return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
-			end
-
-			Logger.notify("Successfully created BuilderData object.")
-
-			Visuals.bdata = BuilderData.new(bresult, dresult)
-		end,
-	})
-
-	buildAssistanceDepBox:SetupDependencies({
-		{ Toggles.BuildAssistance, true },
-	})
-
-	-- Build Stealer section (right)
-	local stealBox = tab:AddRightGroupbox("Build Stealer")
-
-	stealBox:AddToggle("BuildStealer", {
-		Text = "Build Stealer",
-		Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
-		Default = false,
-	})
+		end
+	end)
 end
 
 -- Return module.
