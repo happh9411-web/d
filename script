@@ -74612,27 +74612,27 @@ return LPH_NO_VIRTUALIZE(function()
 
 			-- Wire up callbacks / initial values if the library is present.
 			if self.Library then
-				-- Keybind toggle
-				if Options and Options.SaveManager_ShowKeybind then
-					Options.SaveManager_ShowKeybind:OnChanged(function(val)
+				-- Keybind toggle (created as a Toggle via section:AddToggle)
+				if Toggles and Toggles.SaveManager_ShowKeybind then
+					Toggles.SaveManager_ShowKeybind:OnChanged(function(val)
 						if self.Library.KeybindFrame then
 							self.Library.KeybindFrame.Visible = val
 						end
 					end)
 					-- Initialize to current state
-					Options.SaveManager_ShowKeybind:SetValue(self.Library.KeybindFrame and self.Library.KeybindFrame.Visible or false)
+					Toggles.SaveManager_ShowKeybind:SetValue(self.Library.KeybindFrame and self.Library.KeybindFrame.Visible or false)
 				end
 
-				-- Watermark toggle
-				if Options and Options.SaveManager_ShowWatermark then
-					Options.SaveManager_ShowWatermark:OnChanged(function(val)
+				-- Watermark toggle (created as a Toggle via section:AddToggle)
+				if Toggles and Toggles.SaveManager_ShowWatermark then
+					Toggles.SaveManager_ShowWatermark:OnChanged(function(val)
 						if self.Library.SetWatermarkVisibility then
 							self.Library:SetWatermarkVisibility(val)
 						elseif self.Library.Watermark then
 							self.Library.Watermark.Visible = val
 						end
 					end)
-					Options.SaveManager_ShowWatermark:SetValue(self.Library.Watermark and self.Library.Watermark.Visible or false)
+					Toggles.SaveManager_ShowWatermark:SetValue(self.Library.Watermark and self.Library.Watermark.Visible or false)
 				end
 			end
 
