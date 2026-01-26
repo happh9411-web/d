@@ -76457,6 +76457,57 @@ function AutomationTab.initAutoLootSection(groupbox)
 	})
 end
 
+---Initialize Auto Bank section.
+---@param groupbox table
+function AutomationTab.initAutoBankSection(groupbox)
+	groupbox
+		:AddToggle("AutoBank", {
+			Text = "Auto Bank",
+			Tooltip = "Automatically deposit the selected item into the bank.",
+			Default = false,
+			Callback = function(val)
+				if not val then
+					return
+				end
+
+				task.spawn(function()
+					local Players = game:GetService("Players")
+					local player = Players.LocalPlayer
+
+					while Toggles.AutoBank and Toggles.AutoBank.Value do
+						local itemName = "Browncap"
+						if Options and Options.AutoBank_Item and Options.AutoBank_Item.Value then
+							itemName = Options.AutoBank_Item.Value
+						end
+
+						local ok, remote
+						pcall(function()
+							local pg = player and player:FindFirstChild("PlayerGui") and player.PlayerGui
+							if pg and pg:FindFirstChild("BankGui") then
+								remote = pg.BankGui:FindFirstChild("Choice")
+							end
+						end)
+
+						local tool = player and player.Backpack and player.Backpack:FindFirstChild(itemName)
+						if tool and remote then
+							pcall(function()
+								remote:FireServer("deposit", tool)
+							end)
+						end
+
+						task.wait(1)
+					end
+				end)
+			end,
+		})
+
+	groupbox:AddDropdown("AutoBank_Item", {
+		Text = "Item To Deposit",
+		Default = 1,
+		Values = { "Browncap", "Moonseye", "Idol of Yunshul", "Armorer's Needle" },
+	})
+end
+
 ---Initialize Joy Farm section.
 ---@param groupbox table
 function AutomationTab.initJoyFarmSection(groupbox)
@@ -76557,6 +76608,7 @@ function AutomationTab.init(window)
 	AutomationTab.initAttributeSection(tab:AddDynamicGroupbox("Attribute Farm"))
 	AutomationTab.initEffectAutomation(tab:AddDynamicGroupbox("Effect Automation"))
 	AutomationTab.initAutoLootSection(tab:AddLeftGroupbox("Auto Loot"))
+	AutomationTab.initAutoBankSection(tab:AddLeftGroupbox("Auto Bank"))
 
 	if game.PlaceId == 8668476218 then
 		AutomationTab.initJoyFarmSection(tab:AddLeftGroupbox("Joy Farm"))
