@@ -74629,6 +74629,47 @@ return LPH_NO_VIRTUALIZE(function()
 						return opt
 					end
 
+					-- Canonicalize common key name variations (Type/Idx/Value/Key/Text etc.)
+					if opt.Type and not opt.type then
+						opt.type = opt.Type
+					end
+					if opt.Idx and not opt.idx then
+						opt.idx = opt.Idx
+					end
+					if opt.Index and not opt.idx then
+						opt.idx = opt.Index
+					end
+					if opt.Value and opt.value == nil then
+						opt.value = opt.Value
+					end
+					if opt.Text and opt.text == nil then
+						opt.text = opt.Text
+					end
+					if opt.Key and opt.key == nil then
+						opt.key = opt.Key
+					end
+					if opt.Mode and opt.mode == nil then
+						opt.mode = opt.Mode
+					end
+					if opt.Values and opt.values == nil then
+						opt.values = opt.Values
+					end
+					if opt.Hue and opt.hue == nil then
+						opt.hue = opt.Hue
+					end
+					if opt.Sat and opt.sat == nil then
+						opt.sat = opt.Sat
+					end
+					if opt.Vib and opt.vib == nil then
+						opt.vib = opt.Vib
+					end
+					if opt.Transparency and opt.transparency == nil then
+						opt.transparency = opt.Transparency
+					end
+					if opt.Rainbow and opt.rainbow == nil then
+						opt.rainbow = opt.Rainbow
+					end
+
 					-- Coerce slider values saved as strings to numbers.
 					if opt.type == "Slider" and opt.value ~= nil and type(opt.value) == "string" then
 						local n = tonumber(opt.value)
@@ -74776,13 +74817,13 @@ return LPH_NO_VIRTUALIZE(function()
 
 			shared.Lycoris.suspend_watermark = _prev
 
-			if not ok then
-				return false, tostring(res1)
-			end
-
 			-- Restore original globals so we don't unexpectedly override runtime state.
 			Options = _oldOptions
 			Toggles = _oldToggles
+
+			if not ok then
+				return false, tostring(res1)
+			end
 
 			return res1, res2
 		end
