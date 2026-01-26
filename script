@@ -73850,8 +73850,8 @@ local renderStepped = Signal.new(runService.RenderStepped)
 local menuMaid = Maid.new()
 
 -- Constants.
-local VERSION = "1.0.5"
-local WATERMARK_TITLE = "Serek Hub"
+local VERSION = "v666"
+local WATERMARK_TITLE = "EVIL HUB"
 
 -- Get game name dynamically.
 local gameName = "Unknown"
@@ -73861,10 +73861,10 @@ pcall(function()
 	gameName = productInfo.Name or "Unknown"
 end)
 
-local MENU_TITLE = "Serek Hub | " .. gameName
+local MENU_TITLE = "EVIL HUB | " .. gameName
 
 if LRM_UserNote then
-	MENU_TITLE = string.format("(v%s) Serek Hub | %s", VERSION, gameName)
+	MENU_TITLE = string.format("(v%s) EVIL HUB | %s", VERSION, gameName)
 end
 
 ---Initialize menu.
@@ -76504,7 +76504,7 @@ function AutomationTab.initAutoBankSection(groupbox)
 	groupbox:AddDropdown("AutoBank_Item", {
 		Text = "Item To Deposit",
 		Default = 1,
-		Values = { "Browncap", "Moonseye Tome", "Idol of Yun'shul", "Armorer's Needle","Smith's alloy","Sinner's Ash", },
+		Values = { "Browncap", "Moonseye Tome", "Idol of Yun'shul", "Armorer's Needle","Smith's alloy","Sinner's Ash","Bloodless Gem","Blue Gem","Blessed Gem","Insignia Gem","Wayward Gem","Wind Gem","Gilded Needle","Forge Needle" },
 	})
 end
 
