@@ -74460,6 +74460,31 @@ return LPH_NO_VIRTUALIZE(function()
 				end
 			end
 
+			-- Ensure UI elements reflect toggles after load (fix race/order issues)
+			-- Prefer Toggles entries if present, fall back to Options.
+			local function safeApplyWatermark()
+				local wmToggle = (Toggles and Toggles.ShowWatermark) or (Options and Options.ShowWatermark)
+				if wmToggle and self.Library then
+					local visible = wmToggle.Value
+					if self.Library.SetWatermarkVisibility then
+						self.Library:SetWatermarkVisibility(visible)
+					elseif self.Library.Watermark then
+						self.Library.Watermark.Visible = visible
+					end
+				end
+			end
+
+			local function safeApplyKeybinds()
+				local kbToggle = (Toggles and Toggles.ShowKeybinds) or (Options and Options.ShowKeybinds)
+				if kbToggle and self.Library and self.Library.KeybindFrame then
+					self.Library.KeybindFrame.Visible = kbToggle.Value
+				end
+			end
+
+			-- Apply immediately.
+			safeApplyWatermark()
+			safeApplyKeybinds()
+
 			return true
 		end
 
