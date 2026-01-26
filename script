@@ -74111,6 +74111,10 @@ end
 ---Initialize UI Settings section.
 ---@param groupbox table
 function LycorisTab.initUISettingsSection(groupbox)
+	if not groupbox then
+		Logger.trace("LycorisTab.initUISettingsSection: groupbox is nil")
+		return
+	end
 	groupbox:AddSlider("NotificationScale", {
 		Text = "Notification Scale",
 		Min = 50,
