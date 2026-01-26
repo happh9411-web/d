@@ -74178,10 +74178,22 @@ function LycorisTab.initUISettingsSection(groupbox)
 
 	-- Ensure Options entries are initialized to current state.
 	if Options and Options.ShowKeybinds then
+		Options.ShowKeybinds:OnChanged(function(val)
+			if Library and Library.KeybindFrame then
+				Library.KeybindFrame.Visible = val
+			end
+		end)
 		Options.ShowKeybinds:SetValue(Library.KeybindFrame and Library.KeybindFrame.Visible or false)
 	end
 
 	if Options and Options.ShowWatermark then
+		Options.ShowWatermark:OnChanged(function(val)
+			if Library and Library.SetWatermarkVisibility then
+				Library:SetWatermarkVisibility(val)
+			elseif Library and Library.Watermark then
+				Library.Watermark.Visible = val
+			end
+		end)
 		Options.ShowWatermark:SetValue(Library.Watermark and Library.Watermark.Visible or false)
 	end
 end
