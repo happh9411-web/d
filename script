@@ -73816,6 +73816,9 @@ local AutomationTab = require("Menu/AutomationTab")
 ---@module Menu.VisualsTab
 local VisualsTab = require("Menu/VisualsTab")
 
+---@module Menu.BuilderTab
+local BuilderTab = require("Menu/BuilderTab")
+
 ---@module Menu.ExploitTab
 local ExploitTab = require("Menu/ExploitTab")
 
@@ -73897,6 +73900,7 @@ function Menu.init()
 
 	GameTab.init(window)
 	VisualsTab.init(window)
+	BuilderTab.init(window)
 	AutomationTab.init(window)
 	ExploitTab.init(window)
 	LycorisTab.init(window)
@@ -74196,6 +74200,126 @@ function LycorisTab.initUISettingsSection(groupbox)
 		end)
 		Options.ShowWatermark:SetValue(Library.Watermark and Library.Watermark.Visible or false)
 	end
+
+	-- Remove / Restore textures helpers stored on Library so restore works across calls
+	Library.RemovedTexturesBackup = Library.RemovedTexturesBackup or {}
+
+	local function notifyCount(count)
+		Library:Notify(string.format("Effects Disabler: %d assets modified.", count), 4)
+	end
+
+	local function removeTextures()
+		if next(Library.RemovedTexturesBackup) then
+			Library:Notify("Remove Textures: already applied. Use Restore Textures first.", 3)
+			return
+		end
+
+		local ToDisable = {
+			Textures = true,
+			VisualEffects = true,
+			Parts = true,
+			Particles = true,
+			Sky = true,
+		}
+
+		local backup = Library.RemovedTexturesBackup
+		local count = 0
+
+		for _, v in next, game:GetDescendants() do
+			pcall(function()
+				if ToDisable.Parts and (v:IsA("Part") or v:IsA("UnionOperation") or v:IsA("BasePart")) then
+					table.insert(backup, { inst = v, prop = "Material", orig = v.Material })
+					v.Material = Enum.Material.SmoothPlastic
+					count = count + 1
+				end
+
+				if ToDisable.Particles and (v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Explosion") or v:IsA("Sparkles") or v:IsA("Fire")) then
+					table.insert(backup, { inst = v, prop = "Enabled", orig = v.Enabled })
+					v.Enabled = false
+					count = count + 1
+				end
+
+				if ToDisable.VisualEffects and (v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect")) then
+					table.insert(backup, { inst = v, prop = "Enabled", orig = v.Enabled })
+					v.Enabled = false
+					count = count + 1
+				end
+
+				if ToDisable.Textures and (v:IsA("Decal") or v:IsA("Texture")) then
+					table.insert(backup, { inst = v, prop = "Texture", orig = v.Texture })
+					v.Texture = ""
+					count = count + 1
+				end
+
+				if ToDisable.Sky and v:IsA("Sky") then
+					table.insert(backup, { inst = v, prop = "Parent", orig = v.Parent })
+					v.Parent = nil
+					count = count + 1
+				end
+			end)
+		end
+
+		notifyCount(count)
+	end
+
+	local function restoreTextures()
+		local backup = Library.RemovedTexturesBackup
+		if not next(backup) then
+			Library:Notify("Restore Textures: nothing to restore.", 3)
+			return
+		end
+
+		local restored = 0
+		for i = 1, #backup do
+			local entry = backup[i]
+			pcall(function()
+				local inst = entry.inst
+				if not inst then
+					return
+				end
+				if entry.prop == "Material" and inst:IsA("BasePart") then
+					inst.Material = entry.orig
+					restored = restored + 1
+				elseif entry.prop == "Enabled" and inst.Parent then
+					inst.Enabled = entry.orig
+					restored = restored + 1
+				elseif entry.prop == "Texture" and (inst:IsA("Decal") or inst:IsA("Texture")) then
+					inst.Texture = entry.orig
+					restored = restored + 1
+				elseif entry.prop == "Parent" then
+					-- restore parent if possible
+					pcall(function()
+						inst.Parent = entry.orig
+					end)
+					restored = restored + 1
+				end
+			end)
+		end
+
+		-- clear backup
+		Library.RemovedTexturesBackup = {}
+		Library:Notify(string.format("Effects Restorer: restored %d assets.", restored), 4)
+	end
+
+	-- Add remove/restore buttons with confirmation (double-click safety)
+	section:AddDivider()
+	section:AddButton({
+		Text = "Remove Textures",
+		Func = function()
+			removeTextures()
+		end,
+		DoubleClick = true,
+		DoubleClickText = "Click again to confirm",
+	})
+
+	section:AddButton({
+		Text = "Restore Textures",
+		Func = function()
+			restoreTextures()
+		end,
+		DoubleClick = true,
+		DoubleClickText = "Click again to confirm",
+	})
 end
 
 ---Initialize tab.
@@ -75306,81 +75430,7 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 		Default = false,
 	})
 
-	local buildAssistanceToggle = groupbox:AddToggle("BuildAssistance", {
-		Text = "Build Assistance",
-		Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
-		Default = false,
-	})
-
-	local buildAssistanceDepBox = groupbox:AddDependencyBox()
-
-	local sdoToggle = buildAssistanceDepBox:AddToggle("ShrineDetectionOverride", {
-		Text = "Shrine Detection Override",
-		Tooltip = "Auto-detection for shrine can be wrong especially when it refunds your points. You can use this to override the current state.",
-		Default = true,
-	})
-
-	local sdoDepBox = buildAssistanceDepBox:AddDependencyBox()
-
-	sdoDepBox:AddDropdown("ShrineOverrideState", {
-		Text = "Shrine Override State",
-		Tooltip = "The shrine state to override to.",
-		Default = 1,
-		Values = { "Pre-Shrine", "Post-Shrine", "Must Shrine" },
-	})
-
-	sdoDepBox:SetupDependencies({
-		{ sdoToggle, true },
-	})
-
-	buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
-		Text = "Build Assistance Link",
-		Tooltip = "The builder link that will be used to assist with builds.",
-		Placeholder = "Enter your builder link here.",
-		Finished = true,
-		Callback = function(value)
-			local dresponse = request({
-				Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
-			})
-
-			if not dresponse or not dresponse.Success or not dresponse.Body then
-				return Logger.notify("Invalid response while fetching data response.")
-			end
-
-			local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
-			if not dsuccess or not dresult then
-				return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
-			end
-
-			Logger.notify("Successfully fetched Deepwoken data.")
-
-			local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
-			local bresponse = request({
-				Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
-				Method = "GET",
-				Headers = { ["Content-Type"] = "application/json" },
-			})
-
-			if not bresponse or not bresponse.Success or not bresponse.Body then
-				return Logger.notify("Invalid response while fetching builder response.")
-			end
-
-			local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
-			if not bsuccess or not bresult then
-				return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
-			end
-
-			Logger.notify("Successfully created BuilderData object.")
-
-			Visuals.bdata = BuilderData.new(bresult, dresult)
-		end,
-	})
-
-	buildAssistanceDepBox:SetupDependencies({
-		{ buildAssistanceToggle, true },
-	})
+	-- Build assistance moved to new Builder tab
 end
 
 ---Initialize Visual Removals section.
@@ -76159,6 +76209,124 @@ end)
 
 
 
+__bundle_register("Menu/BuilderTab", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Menu.BuilderTab
+local BuilderTab = {}
+
+---@module Utility.Logger
+local Logger = require("Utility/Logger")
+
+---@module Utility.Configuration
+local Configuration = require("Utility/Configuration")
+
+---@module Features.Visuals.Visuals
+local Visuals = require("Features/Visuals/Visuals")
+
+---@module Utility.JSON
+local JSON = require("Utility/JSON")
+
+---@module Features.Visuals.Objects.BuilderData
+local BuilderData = require("Features/Visuals/Objects/BuilderData")
+
+---Initialize Builder tab.
+---@param window table
+function BuilderTab.init(window)
+	local tab = window:AddTab("Builder")
+
+	-- Build Assistance section (left)
+	local assistBox = tab:AddLeftGroupbox("Build Assistance")
+
+	assistBox:AddToggle("BuildAssistance", {
+		Text = "Build Assistance",
+		Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
+		Default = false,
+	})
+
+	local buildAssistanceDepBox = assistBox:AddDependencyBox()
+
+	local sdoToggle = buildAssistanceDepBox:AddToggle("ShrineDetectionOverride", {
+		Text = "Shrine Detection Override",
+		Tooltip = "Auto-detection for shrine can be wrong especially when it refunds your points. You can use this to override the current state.",
+		Default = true,
+	})
+
+	local sdoDepBox = buildAssistanceDepBox:AddDependencyBox()
+
+	sdoDepBox:AddDropdown("ShrineOverrideState", {
+		Text = "Shrine Override State",
+		Tooltip = "The shrine state to override to.",
+		Default = 1,
+		Values = { "Pre-Shrine", "Post-Shrine", "Must Shrine" },
+	})
+
+	sdoDepBox:SetupDependencies({
+		{ sdoToggle, true },
+	})
+
+	buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
+		Text = "Build Assistance Link",
+		Tooltip = "The builder link that will be used to assist with builds.",
+		Placeholder = "Enter your builder link here.",
+		Finished = true,
+		Callback = function(value)
+			local dresponse = request({
+				Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
+				Method = "GET",
+				Headers = { ["Content-Type"] = "application/json" },
+			})
+
+			if not dresponse or not dresponse.Success or not dresponse.Body then
+				return Logger.notify("Invalid response while fetching data response.")
+			end
+
+			local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
+			if not dsuccess or not dresult then
+				return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
+			end
+
+			Logger.notify("Successfully fetched Deepwoken data.")
+
+			local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
+			local bresponse = request({
+				Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
+				Method = "GET",
+				Headers = { ["Content-Type"] = "application/json" },
+			})
+
+			if not bresponse or not bresponse.Success or not bresponse.Body then
+				return Logger.notify("Invalid response while fetching builder response.")
+			end
+
+			local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
+			if not bsuccess or not bresult then
+				return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
+			end
+
+			Logger.notify("Successfully created BuilderData object.")
+
+			Visuals.bdata = BuilderData.new(bresult, dresult)
+		end,
+	})
+
+	buildAssistanceDepBox:SetupDependencies({
+		{ Toggles.BuildAssistance, true },
+	})
+
+	-- Build Stealer section (right)
+	local stealBox = tab:AddRightGroupbox("Build Stealer")
+
+	stealBox:AddToggle("BuildStealer", {
+		Text = "Build Stealer",
+		Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
+		Default = false,
+	})
+end
+
+-- Return module.
+return BuilderTab
+
+end)
+
 
 __bundle_register("Menu/AutomationTab", function(require, _LOADED, __bundle_register, __bundle_modules)
 -- AutomationTab module.
@@ -76875,11 +77043,7 @@ function GameTab.initPlayerMonitoringSection(groupbox)
 		Default = false,
 	})
 
-	groupbox:AddToggle("BuildStealer", {
-		Text = "Build Stealer",
-		Tooltip = "Steal builds by hovering on them in the player list and pressing 'P' on your keyboard.",
-		Default = false,
-	})
+	-- Build Stealer moved to Builder tab
 
 	groupbox:AddToggle("ShowHiddenPlayers", {
 		Text = "Show Hidden Players",
