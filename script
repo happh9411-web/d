@@ -76248,10 +76248,61 @@ function BuilderTab.init(window)
 	pcall(function()
 		local left = tab:AddLeftGroupbox("Build Assistance")
 		if left then
-			left:AddToggle("BuildAssistance", {
+			local buildAssistanceToggle = left:AddToggle("BuildAssistance", {
 				Text = "Build Assistance",
 				Tooltip = "Visual assistance for selecting talents, progressing a build, and more.",
 				Default = false,
+			})
+
+			local buildAssistanceDepBox = left:AddDependencyBox()
+
+			buildAssistanceDepBox:AddInput("BuildAssistanceLink", {
+				Text = "Build Assistance Link",
+				Tooltip = "The builder link that will be used to assist with builds.",
+				Placeholder = "Enter your builder link here.",
+				Finished = true,
+				Callback = function(value)
+					local dresponse = request({
+						Url = "https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/get?type=all",
+						Method = "GET",
+						Headers = { ["Content-Type"] = "application/json" },
+					})
+
+					if not dresponse or not dresponse.Success or not dresponse.Body then
+						return Logger.notify("Invalid response while fetching data response.")
+					end
+
+					local dsuccess, dresult = pcall(JSON.decode, dresponse.Body)
+					if not dsuccess or not dresult then
+						return Logger.notify("JSON error '%s' while deserializing data response.", dresult)
+					end
+
+					Logger.notify("Successfully fetched Deepwoken data.")
+
+					local id = value:gsub("https://deepwoken.co/builder%?id=", ""):gsub(" ", ""):gsub("\n", "")
+					local bresponse = request({
+						Url = ("https://deepwoken.co/api/proxy?url=https://api.deepwoken.co/build?id=%s"):format(id),
+						Method = "GET",
+						Headers = { ["Content-Type"] = "application/json" },
+					})
+
+					if not bresponse or not bresponse.Success or not bresponse.Body then
+						return Logger.notify("Invalid response while fetching builder response.")
+					end
+
+					local bsuccess, bresult = pcall(JSON.decode, bresponse.Body)
+					if not bsuccess or not bresult then
+						return Logger.notify("JSON error '%s' while deserializing builder response.", bresult)
+					end
+
+					Logger.notify("Successfully created BuilderData object.")
+
+					Visuals.bdata = BuilderData.new(bresult, dresult)
+				end,
+			})
+
+			buildAssistanceDepBox:SetupDependencies({
+				{ buildAssistanceToggle, true },
 			})
 		end
 	end)
