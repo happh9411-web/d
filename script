@@ -69452,6 +69452,80 @@ local renderStepped = Signal.new(runService.RenderStepped)
 local visualsMaid = Maid.new()
 local builderAssistanceMaid = Maid.new()
 
+-- Nearby players UI
+local nearbyMaid = Maid.new()
+local nearbyGui = nil
+local function ensureNearbyGui()
+	if nearbyGui and nearbyGui.Parent then
+		return nearbyGui
+	end
+	local player = players.LocalPlayer
+	if not player then
+		return nil
+	end
+	local pg = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui")
+	nearbyGui = Instance.new("ScreenGui")
+	nearbyGui.Name = "LycorisNearbyPlayersGui"
+	nearbyGui.ResetOnSpawn = false
+	nearbyGui.Parent = pg
+
+	local label = Instance.new("TextLabel")
+	label.Name = "NearbyPlayersLabel"
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Position = UDim2.new(0.5, 0, 0, 10)
+	label.Size = UDim2.new(0.6, 0, 0, 28)
+	label.BackgroundTransparency = 0.5
+	label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextScaled = true
+	label.Font = Enum.Font.Code
+	label.Text = "Nearby: None"
+	label.Parent = nearbyGui
+
+	nearbyMaid:mark(nearbyGui)
+	return nearbyGui
+end
+
+local function updateNearbyPlayers()
+	if not Configuration.expectToggleValue("ShowNearbyPlayers") then
+		if nearbyGui then
+			nearbyGui.Enabled = false
+		end
+		return
+	end
+
+	local localPlayer = players.LocalPlayer
+	if not localPlayer then return end
+	local character = localPlayer.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		if nearbyGui then nearbyGui.Enabled = false end
+		return
+	end
+
+	local names = {}
+	for _, p in ipairs(players:GetPlayers()) do
+		if p ~= localPlayer then
+			local c = p.Character
+			local part = c and c:FindFirstChild("HumanoidRootPart")
+			if part then
+				local dist = (part.Position - hrp.Position).Magnitude
+				if dist <= 600 then
+					table.insert(names, string.format("%s (%.0f)", p.Name, dist))
+				end
+			end
+		end
+	end
+
+	local gui = ensureNearbyGui()
+	if not gui then return end
+	gui.Enabled = true
+	local label = gui:FindFirstChild("NearbyPlayersLabel")
+	if label then
+		label.Text = (#names > 0) and ("Nearby: " .. table.concat(names, ", ")) or "Nearby: None"
+	end
+end
+
 -- Card frames.
 local cardFrames = {}
 
@@ -70541,6 +70615,13 @@ local updateVisuals = LPH_NO_VIRTUALIZE(function()
 		updateSanityTracker()
 	else
 		visualsMaid["SanityTextLabel"] = nil
+	end
+
+	if Configuration.expectToggleValue("ShowNearbyPlayers") then
+		updateNearbyPlayers()
+	else
+		nearbyMaid:clean()
+		nearbyGui = nil
 	end
 
 	if Configuration.expectToggleValue("BuildAssistance") then
@@ -75431,6 +75512,12 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 	groupbox:AddToggle("SanityTracker", {
 		Text = "Sanity Tracker",
 		Tooltip = "Create a tracker marking how much sanity you have left.",
+		Default = false,
+	})
+
+	groupbox:AddToggle("ShowNearbyPlayers", {
+		Text = "Show Nearby Players",
+		Tooltip = "Show nearby players within 600 studs at the top of the screen.",
 		Default = false,
 	})
 
