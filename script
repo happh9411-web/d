@@ -69455,7 +69455,6 @@ local builderAssistanceMaid = Maid.new()
 -- Nearby players UI
 local nearbyMaid = Maid.new()
 local nearbyGui = nil
-local nearbyEnabled = false
 local function ensureNearbyGui()
 	if nearbyGui and nearbyGui.Parent then
 		return nearbyGui
@@ -69484,25 +69483,8 @@ local function ensureNearbyGui()
 	label.Visible = false
 	label.Parent = nearbyGui
 
-	local button = Instance.new("TextButton")
-	button.Name = "NearbyPlayersToggleButton"
-	button.AnchorPoint = Vector2.new(0.5, 0)
-	button.Position = UDim2.new(0.5, 0, 0, 44)
-	button.Size = UDim2.new(0.2, 0, 0, 24)
-	button.BackgroundTransparency = 0.4
-	button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.TextScaled = true
-	button.Font = Enum.Font.Code
-	button.Text = "Show Nearby"
-	button.Visible = false
-	button.Parent = nearbyGui
-
-	button.MouseButton1Click:Connect(function()
-		nearbyEnabled = not nearbyEnabled
-		label.Visible = nearbyEnabled
-		button.Text = nearbyEnabled and "Hide Nearby" or "Show Nearby"
-	end)
+	-- single label only (no button)
+	label.Visible = false
 
 	nearbyMaid:mark(nearbyGui)
 	return nearbyGui
@@ -69545,17 +69527,18 @@ local function updateNearbyPlayers()
 	local label = gui:FindFirstChild("NearbyPlayersLabel")
 	local button = gui:FindFirstChild("NearbyPlayersToggleButton")
 	if #names > 0 then
-		if button then button.Visible = true end
-		if nearbyEnabled and label then
+		if label then
 			label.Visible = true
-			label.Text = "Nearby: " .. table.concat(names, ", ")
-		elseif label then
-			label.Visible = false
+			-- show closest only
+			table.sort(names, function(a, b)
+				local ad = tonumber(a:match("%((%d+)%)")) or 0
+				local bd = tonumber(b:match("%((%d+)%)")) or 0
+				return ad < bd
+			end)
+			label.Text = "Nearby: " .. names[1]
 		end
 	else
-		if button then button.Visible = false end
 		if label then label.Visible = false end
-		nearbyEnabled = false
 	end
 end
 
@@ -75548,11 +75531,6 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 		Default = false,
 	})
 
-	groupbox:AddToggle("ShowNearbyPlayers", {
-		Text = "Show Nearby Players",
-		Tooltip = "Show nearby players within 600 studs at the top of the screen.",
-		Default = false,
-	})
 
 	-- Build assistance moved to new Builder tab
 end
@@ -75900,6 +75878,17 @@ end
 function VisualsTab.init(window)
 	-- Create tab.
 	local tab = window:AddTab("Visuals")
+
+	pcall(function()
+		local top = tab:AddLeftGroupbox("Visuals Quick")
+		if top then
+			top:AddToggle("ShowNearbyPlayers", {
+				Text = "Show Nearby Players",
+				Tooltip = "Show nearby players within 600 studs at the top of the screen.",
+				Default = false,
+			})
+		end
+	end)
 
 	-- Initialize sections.
 	VisualsTab.initESPCustomization(tab:AddDynamicGroupbox("ESP Customization"))
