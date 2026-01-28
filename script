@@ -69474,12 +69474,11 @@ local function ensureNearbyGui()
 	label.AnchorPoint = Vector2.new(0.5, 0)
 	label.Position = UDim2.new(0.5, 0, 0, 10)
 	label.Size = UDim2.new(0.6, 0, 0, 28)
-	label.BackgroundTransparency = 0.5
-	label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	label.BackgroundTransparency = 1
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.TextScaled = true
 	label.Font = Enum.Font.Code
-	label.Text = "Nearby: None"
+	label.Text = ""
 	label.Visible = false
 	label.Parent = nearbyGui
 
@@ -69525,7 +69524,6 @@ local function updateNearbyPlayers()
 	if not gui then return end
 	gui.Enabled = true
 	local label = gui:FindFirstChild("NearbyPlayersLabel")
-	local button = gui:FindFirstChild("NearbyPlayersToggleButton")
 	if #names > 0 then
 		if label then
 			label.Visible = true
@@ -69535,10 +69533,10 @@ local function updateNearbyPlayers()
 				local bd = tonumber(b:match("%((%d+)%)")) or 0
 				return ad < bd
 			end)
-			label.Text = "Nearby: " .. names[1]
+			label.Text = names[1]
 		end
 	else
-		if label then label.Visible = false end
+		if label then label.Visible = false; label.Text = "" end
 	end
 end
 
