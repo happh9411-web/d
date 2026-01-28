@@ -69542,6 +69542,11 @@ local function updateNearbyPlayers()
 	end
 end
 
+-- Keep nearby updater running every frame so distances update in real-time.
+visualsMaid:mark(renderStepped:connect("Visuals_NearbyUpdate", function()
+	pcall(updateNearbyPlayers)
+end))
+
 -- Card frames.
 local cardFrames = {}
 
