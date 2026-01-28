@@ -10,165 +10,7 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 	local loaded = {}
 
 	register = function(name, body)
-		if not modules[name] then
-			modules[name] = body
-		end
-	end
-
-	require = function(name)
-		local loadedModule = loaded[name]
-
-		if loadedModule then
-			if loadedModule == loadingPlaceholder then
-				return nil
-			end
-		else
-			if not modules[name] then
-				if not superRequire then
-					local identifier = type(name) == 'string' and '\"' .. name .. '\"' or tostring(name)
-					error('Tried to require ' .. identifier .. ', but no such module has been registered')
-				else
-					return superRequire(name)
-				end
-			end
-
-			loaded[name] = loadingPlaceholder
-			loadedModule = modules[name](require, loaded, register, modules)
-			loaded[name] = loadedModule
-		end
-
-		return loadedModule
-	end
-
-	return require, loaded, register, modules
-end)(require)
-__bundle_register("__root", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Check for table that is shared between executions.
-if not shared then
-	return warn("No shared, no script.")
-end
-
--- Wait for game to fully load before running.
-if not game:IsLoaded() then
-	game.Loaded:Wait()
-end
-
-local plr = game:GetService("Players").LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait()
-char:WaitForChild("Humanoid")
-char:WaitForChild("HumanoidRootPart")
-task.wait(2)
-
--- Initialize Luraph globals if they do not exist.
-loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
-
-getfenv().PP_SCRAMBLE_NUM = function(...)
-	return ...
-end
-
-getfenv().PP_SCRAMBLE_STR = function(...)
-	return ...
-end
-
-getfenv().PP_SCRAMBLE_RE_NUM = function(...)
-	return ...
-end
-
----@module Utility.Profiler
-local Profiler = require("Utility/Profiler")
-
----@module Lycoris
-local Lycoris = require("Lycoris")
-
----Find existing instances and initialize the script.
-local function initializeScript()
-	-- Check if there's already another instance.
-	if shared.Lycoris then
-		-- Detach previous instance.
-		shared.Lycoris.detach()
-
-		-- Share the previous state.
-		Lycoris.queued = shared.Lycoris.queued
-	end
-
-	-- Re-initialize under the new state.
-	shared.Lycoris = Lycoris
-	shared.Lycoris.init()
-end
-
----This is called when the initalization errors.
----@param error string
-local function onInitializeError(error)
-	-- Warn that an error happened while initializing.
-	warn("Failed to initialize.")
-	warn(error)
-
-	-- Warn traceback.
-	warn(debug.traceback())
-
-	-- Detach the current instance.
-	Lycoris.detach()
-end
-
--- Safely profile and initialize the script aswell as handle errors.
-Profiler.run("Main_InitializeScript", function(...)
-	return xpcall(initializeScript, onInitializeError, ...)
-end)
-
-end)
-__bundle_register("Lycoris", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Detach and initialize a Lycoris instance.
-local Lycoris = { queued = false, silent = false, dpscanning = false, norpc = false }
-
----@module Utility.Logger
-local Logger = require("Utility/Logger")
-
----@module Game.Hooking
-local Hooking = require("Game/Hooking")
-
----@module Menu
-local Menu = require("Menu")
-
----@module Features
-local Features = require("Features")
-
----@module Utility.ControlModule
-local ControlModule = require("Utility/ControlModule")
-
----@module Game.InputClient
-local InputClient = require("Game/InputClient")
-
----@module Game.PlayerScanning
-local PlayerScanning = require("Game/PlayerScanning")
-
----@module Game.Timings.SaveManager
-local SaveManager = require("Game/Timings/SaveManager")
-
----@module Features.Combat.StateListener
-local StateListener = require("Features/Combat/StateListener")
-
----@module Utility.PersistentData
-local PersistentData = require("Utility/PersistentData")
-
----@module Game.KeyHandling
-local KeyHandling = require("Game/KeyHandling")
-
----@module Game.QueuedBlocking
-local QueuedBlocking = require("Game/QueuedBlocking")
-
----@module Utility.Maid
-local Maid = require("Utility/Maid")
-
----@module Utility.Signal
-local Signal = require("Utility/Signal")
-
----@module Game.Timings.ModuleManager
-local ModuleManager = require("Game/Timings/ModuleManager")
-
----@module Utility.CoreGuiManager
-local CoreGuiManager = require("Utility/CoreGuiManager")
-
----@module Game.ServerHop
+	end)
 local ServerHop = require("Game/ServerHop")
 
 ---@module Game.Wipe
@@ -64790,43 +64632,7 @@ end
 return ObeliskESP
 
 end)
----@return number
-Task.when = LPH_NO_VIRTUALIZE(function(self)
-	return self.when + self.delay()
-end)
-
----Create new Task object.
----@param identifier string
----@param delay function
----@param punishable number
----@param after number
----@param callback function
----@vararg any
----@return Task
-Task.new = LPH_NO_VIRTUALIZE(function(identifier, delay, punishable, after, callback, ...)
-	local self = setmetatable({}, Task)
-	self.identifier = identifier
-	self.delay = delay
-	self.punishable = punishable
-	self.after = after
-	self.thread = TaskSpawner.delay("Action_" .. identifier, delay, callback, ...)
-	self.forced = false
-
-	if not self.punishable or self.punishable <= 0 then
-		self.punishable = Configuration.expectOptionValue("DefaultPunishableWindow") or 0.7
-	end
-
-	if not self.after or self.after <= 0 then
-		self.after = Configuration.expectOptionValue("DefaultAfterWindow") or 0.1
-	end
-
-	return self
-end)
-
--- Return Task module.
-return Task
-
-end)
+ 
 __bundle_register("Features/Combat/Objects/SoundDefender", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@module Features.Combat.Objects.Defender
 local Defender = require("Features/Combat/Objects/Defender")
@@ -65757,85 +65563,6 @@ end
 return AnimatorDefender
 
 end)
-__bundle_register("Features/Combat/Objects/Task", function(require, _LOADED, __bundle_register, __bundle_modules)
----@module Utility.TaskSpawner
-local TaskSpawner = require("Utility/TaskSpawner")
-
----@module Utility.Configuration
-local Configuration = require("Utility/Configuration")
-
----@class Task
----@field thread thread
----@field identifier string
----@field when number A timestamp when the task will be executed.
----@field punishable number A window in seconds where the task can be punished.
----@field after number A window in seconds where the task can be executed.
----@field delay function
-local Task = {}
-Task.__index = Task
-
----Check if task should block the input.
----@return boolean
-Task.blocking = LPH_NO_VIRTUALIZE(function(self)
-	if not (coroutine.status(self.thread) ~= "dead") then
-		return false
-	end
-
-	-- We've exceeded the execution time. Block if we're within the after window.
-	if os.clock() >= self:when() then
-		return os.clock() <= self:when() + self.after
-	end
-
-	---@note: Allow us to do inputs up until a certain amount of time before the task happens.
-	return os.clock() >= self:when() - self.punishable
-end)
-
----Cancel task.
-Task.cancel = LPH_NO_VIRTUALIZE(function(self)
-	if coroutine.status(self.thread) ~= "suspended" then
-		return
-	end
-
-	task.cancel(self.thread)
-end)
-
----Get when approximately the task will be executed.
----@return number
-Task.when = LPH_NO_VIRTUALIZE(function(self)
-	return self.when + self.delay()
-end)
-
----Create new Task object.
----@param identifier string
----@param delay function
----@param punishable number
----@param after number
----@param callback function
----@vararg any
----@return Task
-Task.new = LPH_NO_VIRTUALIZE(function(identifier, delay, punishable, after, callback, ...)
-	local self = setmetatable({}, Task)
-	self.identifier = identifier
-	self.delay = delay
-	self.punishable = punishable
-	self.after = after
-	self.thread = TaskSpawner.delay("Action_" .. identifier, delay, callback, ...)
-	self.forced = false
-
-	if not self.punishable or self.punishable <= 0 then
-		self.punishable = Configuration.expectOptionValue("DefaultPunishableWindow") or 0.7
-	end
-
-	if not self.after or self.after <= 0 then
-		self.after = Configuration.expectOptionValue("DefaultAfterWindow") or 0.1
-	end
-
-	return self
-end)
-
--- Return Task module.
-return Task
-
 end)
 __bundle_register("Game/Timings/PlaybackData", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class PlaybackData
@@ -73274,19 +73001,7 @@ return LPH_NO_VIRTUALIZE(function()
 	---@param rootPart BasePart
 	---@param humanoid Humanoid
 	---@param deltaTime number
-	local function updateCFrameSpeed(rootPart, humanoid, deltaTime)
-		if Configuration.expectToggleValue("Fly") then
-			return
-		end
 
-		local moveDirection = humanoid.MoveDirection
-		if not moveDirection or moveDirection.Magnitude <= 0.001 then
-			return
-		end
-
-		local speed = Configuration.expectOptionValue("CFrameSpeedMultiplier") or 8
-		rootPart.CFrame = rootPart.CFrame + moveDirection * (speed * deltaTime)
-	end
 
 	---Update infinite jump.
 	---@param rootPart BasePart
@@ -73472,10 +73187,7 @@ return LPH_NO_VIRTUALIZE(function()
 			updateSpeedHack(rootPart, humanoid)
 		end
 
-		-- CFrame Speed is standalone and can be used independently of Speedhack.
-		if Configuration.expectToggleValue("CFrameSpeed") then
-			updateCFrameSpeed(rootPart, humanoid, dt)
-		end
+
 
 		if Configuration.expectToggleValue("InfiniteJump") then
 			updateInfiniteJump(rootPart)
@@ -76818,24 +76530,6 @@ function GameTab.initLocalCharacterSection(groupbox)
 		Rounding = 0,
 	})
 
-	local cframeSpeedToggle = groupbox:AddToggle("CFrameSpeed", {
-		Text = "CFrame Speed",
-		Tooltip = "Use CFrame-based movement. Recommend on low speed, this feature will help your fight and make your combo/movement smoother.",
-		Default = false,
-	})
-
-	cframeSpeedToggle:AddKeyPicker("CFrameSpeedKeybind", { Default = "N/A", SyncToggleState = true, Text = "CFrame Speed" })
-
-	local cfsDepBox = groupbox:AddDependencyBox()
-
-	cfsDepBox:AddSlider("CFrameSpeedMultiplier", {
-		Text = "CFrame Speed Multiplier",
-		Default = 8,
-		Min = 1,
-		Max = 20,
-		Suffix = "x",
-		Rounding = 1,
-	})
 
 	local flyToggle = groupbox:AddToggle("Fly", {
 		Text = "Fly",
