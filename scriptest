@@ -8787,6 +8787,9 @@ local Tweening = { active = false, queue = {} }
 ---@module Utility.Configuration
 local Configuration = require("Utility/Configuration")
 
+---@module Utility.PersistentData
+local PersistentData = require("Utility/PersistentData")
+
 -- Services.
 local players = game:GetService("Players")
 
@@ -16036,12 +16039,12 @@ local INTERNAL_MODULES = {
         		radiantKickTiming.iae = true
         		radiantKickTiming.cbm = true
 
-        		local action = Action.new()
-        		action._when = 400
-        		action._type = "Parry"
-        		action.hitbox = Vector3.new(100, 100, 100)
-        		action.name = "Radiant Kick Shared"
-        		return self:action(radiantKickTiming, action)
+	        	local action = Action.new()
+	        	action._when = 600
+	        	action._type = "Parry"
+	        	action.hitbox = Vector3.new(100, 100, 100)
+	        	action.name = "Radiant Kick Shared"
+	        	return self:action(radiantKickTiming, action)
         	end
 
         	local firstPartTiming = Timing.new()
@@ -17062,12 +17065,12 @@ local INTERNAL_MODULES = {
         		return not track.IsPlaying
         	end)
 
-        	local action = Action.new()
-        	action._when = 0
-        	action._type = "Parry"
-        	action.hitbox = Vector3.new(10, 10, 17.5)
-        	action.name = "Shoulder Bash Far"
-        	self:action(timing, action)
+			local action = Action.new()
+			action._when = 0
+			action._type = "Parry"
+			action.hitbox = Vector3.new(10, 10, 20)
+			action.name = "Shoulder Bash Far"
+			self:action(timing, action)
         end
     end,
     ["SilentheartHeavyMayhem"] = function()
@@ -17612,48 +17615,7 @@ local INTERNAL_MODULES = {
         	return self:action(timing, action)
         end
     end,
-    ["TelegraphMajor"] = function()
-        ---@type Action
-        local Action = getfenv().Action
-
-        ---@module Modules.Globals.Waiter
-        local Waiter = getfenv().Waiter
-
-        ---@module Utility.Finder
-        local Finder = getfenv().Finder
-
-        -- Services.
-        local players = game:GetService("Players")
-
-        ---Module function.
-        ---@param self SoundDefender
-        ---@param timing SoundTiming
-        return function(self, timing)
-        	if not self.owner then
-        		return
-        	end
-
-        	local localCharacter = players.LocalPlayer and players.LocalPlayer.Character
-        	if not localCharacter then
-        		return
-        	end
-
-        	if self.owner ~= localCharacter then
-        		return
-        	end
-
-        	if not Finder.entity("lordregent") then
-        		return
-        	end
-
-        	local action = Action.new()
-        	action._when = 1000
-        	action._type = "Teleport Up"
-        	action.ihbc = true
-        	action.name = "Lord Regent Lariat"
-        	self:action(timing, action)
-        end
-    end,
+    -- TelegraphMajor removed (Lord Regent Lariat + Teleport Up)
     ["TelegraphMinor"] = function()
         ---@type Action
         local Action = getfenv().Action
@@ -64785,49 +64747,49 @@ end
 return PlayerScanning
 
 end)
-__bundle_register("Features/Combat/Objects/Task", function(require, _LOADED, __bundle_register, __bundle_modules)
----@module Utility.TaskSpawner
-local TaskSpawner = require("Utility/TaskSpawner")
+__bundle_register("Features/Visuals/Objects/ObeliskESP", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Features.Visuals.Objects.ModelESP
+local ModelESP = require("Features/Visuals/Objects/ModelESP")
 
 ---@module Utility.Configuration
 local Configuration = require("Utility/Configuration")
 
----@class Task
----@field thread thread
----@field identifier string
----@field when number A timestamp when the task will be executed.
----@field punishable number A window in seconds where the task can be punished.
----@field after number A window in seconds where the task can be executed.
----@field delay function
-local Task = {}
-Task.__index = Task
+---@class ObeliskESP: ModelESP
+local ObeliskESP = setmetatable({}, { __index = ModelESP })
+ObeliskESP.__index = ObeliskESP
+ObeliskESP.__type = "ObeliskESP"
 
----Check if task should block the input.
----@return boolean
-Task.blocking = LPH_NO_VIRTUALIZE(function(self)
-	if not (coroutine.status(self.thread) ~= "dead") then
-		return false
+---Update ObeliskESP.
+---@param self ObeliskESP
+ObeliskESP.update = LPH_NO_VIRTUALIZE(function(self)
+	local model = self.model
+
+	local bpart = model:FindFirstChild("BuzzPart")
+	if not bpart then
+		return self:visible(false)
 	end
 
-	-- We've exceeded the execution time. Block if we're within the after window.
-	if os.clock() >= self:when() then
-		return os.clock() <= self:when() + self.after
+	local interactPrompt = bpart:FindFirstChildOfClass("ProximityPrompt")
+
+	if Configuration.idToggleValue(self.identifier, "HideIfTurnedOn") and not interactPrompt then
+		return self:visible(false)
 	end
 
-	---@note: Allow us to do inputs up until a certain amount of time before the task happens.
-	return os.clock() >= self:when() - self.punishable
+	ModelESP.update(self, {})
 end)
 
----Cancel task.
-Task.cancel = LPH_NO_VIRTUALIZE(function(self)
-	if coroutine.status(self.thread) ~= "suspended" then
-		return
-	end
+---Create new ObeliskESP object.
+---@param identifier string
+---@param model Model
+---@param label string
+function ObeliskESP.new(identifier, model, label)
+	return setmetatable(ModelESP.new(identifier, model, label), ObeliskESP)
+end
 
-	task.cancel(self.thread)
+-- Return ObeliskESP module.
+return ObeliskESP
+
 end)
-
----Get when approximately the task will be executed.
 ---@return number
 Task.when = LPH_NO_VIRTUALIZE(function(self)
 	return self.when + self.delay()
@@ -65793,6 +65755,86 @@ end
 
 -- Return AnimatorDefender module.
 return AnimatorDefender
+
+end)
+__bundle_register("Features/Combat/Objects/Task", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Utility.TaskSpawner
+local TaskSpawner = require("Utility/TaskSpawner")
+
+---@module Utility.Configuration
+local Configuration = require("Utility/Configuration")
+
+---@class Task
+---@field thread thread
+---@field identifier string
+---@field when number A timestamp when the task will be executed.
+---@field punishable number A window in seconds where the task can be punished.
+---@field after number A window in seconds where the task can be executed.
+---@field delay function
+local Task = {}
+Task.__index = Task
+
+---Check if task should block the input.
+---@return boolean
+Task.blocking = LPH_NO_VIRTUALIZE(function(self)
+	if not (coroutine.status(self.thread) ~= "dead") then
+		return false
+	end
+
+	-- We've exceeded the execution time. Block if we're within the after window.
+	if os.clock() >= self:when() then
+		return os.clock() <= self:when() + self.after
+	end
+
+	---@note: Allow us to do inputs up until a certain amount of time before the task happens.
+	return os.clock() >= self:when() - self.punishable
+end)
+
+---Cancel task.
+Task.cancel = LPH_NO_VIRTUALIZE(function(self)
+	if coroutine.status(self.thread) ~= "suspended" then
+		return
+	end
+
+	task.cancel(self.thread)
+end)
+
+---Get when approximately the task will be executed.
+---@return number
+Task.when = LPH_NO_VIRTUALIZE(function(self)
+	return self.when + self.delay()
+end)
+
+---Create new Task object.
+---@param identifier string
+---@param delay function
+---@param punishable number
+---@param after number
+---@param callback function
+---@vararg any
+---@return Task
+Task.new = LPH_NO_VIRTUALIZE(function(identifier, delay, punishable, after, callback, ...)
+	local self = setmetatable({}, Task)
+	self.identifier = identifier
+	self.delay = delay
+	self.punishable = punishable
+	self.after = after
+	self.thread = TaskSpawner.delay("Action_" .. identifier, delay, callback, ...)
+	self.forced = false
+
+	if not self.punishable or self.punishable <= 0 then
+		self.punishable = Configuration.expectOptionValue("DefaultPunishableWindow") or 0.7
+	end
+
+	if not self.after or self.after <= 0 then
+		self.after = Configuration.expectOptionValue("DefaultAfterWindow") or 0.1
+	end
+
+	return self
+end)
+
+-- Return Task module.
+return Task
 
 end)
 __bundle_register("Game/Timings/PlaybackData", function(require, _LOADED, __bundle_register, __bundle_modules)
@@ -69420,8 +69462,7 @@ local Table = require("Utility/Table")
 ---@module Utility.Logger
 local Logger = require("Utility/Logger")
 
----@module Features.Visuals.Objects.ObeliskESP
-local ObeliskESP = require("Features/Visuals/Objects/ObeliskESP")
+-- ObeliskESP removed per user preference.
 
 ---@module Features.Visuals.Objects.BoneAltarESP
 local BoneAltarESP = require("Features/Visuals/Objects/BoneAltarESP")
@@ -69476,9 +69517,13 @@ local function ensureNearbyGui()
 	local label = Instance.new("TextLabel")
 	label.Name = "NearbyPlayersLabel"
 	label.AnchorPoint = Vector2.new(0.5, 0)
-	local storedX = Configuration.expectOptionValue("NearbyPlayersOffsetX") or 0
-	local storedY = Configuration.expectOptionValue("NearbyPlayersOffsetY") or 30
-	label.Position = UDim2.new(0.5, storedX, 0, storedY)
+	-- Restore saved position from persistent storage if present.
+	local savedPos = PersistentData.get("NearbyPlayersLabelPos")
+	if type(savedPos) == "table" then
+		label.Position = UDim2.new(savedPos.XScale or 0.5, savedPos.X or 0, savedPos.YScale or 0, savedPos.Y or 30)
+	else
+		label.Position = UDim2.new(0.5, 0, 0, 30)
+	end
 	label.Size = UDim2.new(0.6, 0, 0, 28)
 	label.BackgroundTransparency = 1
 	label.TextColor3 = Configuration.expectOptionValue("NearbyPlayersColor") or Color3.fromRGB(255, 255, 255)
@@ -69499,17 +69544,16 @@ local function ensureNearbyGui()
 			changedConn = input.Changed:Connect(function()
 				if input.UserInputState == Enum.UserInputState.End then
 					nearbyDragging = false
-					-- Persist final label position to options so it is saved.
+					-- Persist final label position into PersistentData.
 					local finalPos = label.Position
-					local finalX = finalPos.X.Offset
-					local finalY = finalPos.Y.Offset
-					if Options and Options.NearbyPlayersOffsetX then
-						pcall(function() Options.NearbyPlayersOffsetX:SetValue(finalX) end)
-					end
-					if Options and Options.NearbyPlayersOffsetY then
-						pcall(function() Options.NearbyPlayersOffsetY:SetValue(finalY) end)
-					end
-					pcall(function() Library:AttemptSave() end)
+					pcall(function()
+						PersistentData.set("NearbyPlayersLabelPos", {
+							X = finalPos.X.Offset,
+							Y = finalPos.Y.Offset,
+							XScale = finalPos.X.Scale,
+							YScale = finalPos.Y.Scale,
+						})
+					end)
 					changedConn:Disconnect()
 				end
 			end)
@@ -69624,7 +69668,7 @@ local showRobloxChatMap = visualsMaid:mark(OriginalStoreManager.new())
 local noAnimatedSeaMap = visualsMaid:mark(OriginalStoreManager.new())
 local noPersistentMap = visualsMaid:mark(OriginalStoreManager.new())
 local buildAssistanceMap = visualsMaid:mark(OriginalStoreManager.new())
-local jobBoardMap = visualsMaid:mark(OriginalStoreManager.new())
+-- JobBoard support removed per user preference.
 
 ---Update chain of perfection tracker.
 local updateChainOfPerfectionTracker = LPH_NO_VIRTUALIZE(function()
@@ -70637,16 +70681,9 @@ local updateNoAnimatedSea = LPH_NO_VIRTUALIZE(function()
 	end
 end)
 
----Update terrain attachments.
+---Update terrain attachments (job board removed).
 local updateTerrainAttachments = LPH_NO_VIRTUALIZE(function()
-	for _, attachment in next, attachments do
-		local jtg = attachment:FindFirstChild("JobTrackerGui")
-		if not jtg then
-			continue
-		end
-
-		jobBoardMap:add(jtg, "MaxDistance", Configuration.idOptionValue("JobBoard", "MaxDistance") or 1e9)
-	end
+	-- No-op: JobBoard/JobTracker handling removed.
 end)
 
 ---Update ESP.
@@ -70676,11 +70713,7 @@ local updateVisuals = LPH_NO_VIRTUALIZE(function()
 
 	lastVisualsUpdate = os.clock()
 
-	if Configuration.idToggleValue("JobBoard", "Enable") then
-		updateTerrainAttachments()
-	else
-		jobBoardMap:restore()
-	end
+	-- JobBoard handling removed.
 
 	if Configuration.expectToggleValue("ChainOfPerfectionTracker") then
 		updateChainOfPerfectionTracker()
@@ -70773,10 +70806,7 @@ end)
 ---On NPCs ChildAdded.
 ---@param child Instance
 local onNPCsChildAdded = LPH_NO_VIRTUALIZE(function(child)
-	if child.Name == "WindrunnerOrb" and child:IsA("BasePart") then
-		return emplaceObject(child, PartESP.new("WindrunnerOrb", child, "Windrunner Orb"))
-	end
-
+	-- Windrunner orb support removed; treat as generic NPC.
 	return emplaceObject(child, ModelESP.new("NPC", child, child.Name))
 end)
 
@@ -70790,33 +70820,13 @@ end)
 ---@param child Instance
 local onThrownChildAdded = LPH_NO_VIRTUALIZE(function(child)
 	local name = child.Name
-
-	if name == "MinistryCacheIndicator" then
-		return emplaceObject(child, PartESP.new("MinistryCacheIndicator", child, "Ministry Cache Indicator"))
-	end
-
-	if name == "BigArtifact" and child:IsA("Model") then
-		return emplaceObject(child, ModelESP.new("Artifact", child, "Artifact"))
-	end
-
-	if name == "BellMeteor" then
-		return emplaceObject(child, ModelESP.new("BellMeteor", child, "Bell Meteor"))
-	end
-
-	if name == "ExplodeCrate" then
-		return emplaceObject(child, PartESP.new("ExplosiveBarrel", child, "Explosive Barrel"))
-	end
-
+	-- Removed Artifact, MinistryCacheIndicator, BellMeteor, ExplosiveBarrel, BoneSpear special cases.
 	if name == "BagDrop" then
 		return emplaceObject(child, PartESP.new("BagDrop", child, "Bag"))
 	end
 
 	if name == "EventFeatherRef" then
 		return emplaceObject(child, PartESP.new("OwlFeathers", child, "Owl Feathers"))
-	end
-
-	if name == "BoneSpear" then
-		return emplaceObject(child, PartESP.new("BoneSpear", child, "Bone Spear"))
 	end
 
 	visualsMaid:mark(TaskSpawner.spawn("Visuals_ChestCheck", function()
@@ -70837,17 +70847,8 @@ end)
 ---On Shop ChildAdded.
 ---@param child Instance
 local onShopChildAdded = LPH_NO_VIRTUALIZE(function(child)
-	local name = child.Name
-
-	if not child:FindFirstChild("Cost") then
-		return
-	end
-
-	if child:IsA("Model") then
-		return emplaceObject(child, ModelESP.new("ShopESP", child, name))
-	end
-
-	return emplaceObject(child, PartESP.new("ShopESP", child, name))
+	-- Shop ESP removed per user request.
+	return
 end)
 
 ---Create listener.
@@ -70910,32 +70911,7 @@ onWorkspaceChildAdded = LPH_NO_VIRTUALIZE(function(child)
 		return createListener(child, "TrueAvatarBossRoom", onAvatarRoomDescendantAdded, onInstanceRemoving, false)
 	end
 
-	if name == "BellKeys" then
-		for _, descendant in next, child:GetDescendants() do
-			if not descendant:IsA("BasePart") then
-				continue
-			end
-
-			if descendant.Name ~= "BellKey" then
-				continue
-			end
-
-			return emplaceObject(descendant, PartESP.new("BellKey", descendant, "Bell Key"))
-		end
-	end
-
-	if name == "JobBoard" then
-		return emplaceObject(child, ModelESP.new("JobBoard", child, "Job Board"))
-	end
-
-	if name == "BigArtifact" and child:IsA("Model") then
-		return emplaceObject(child, ModelESP.new("Artifact", child, "Artifact"))
-	end
-
-	if name == "WindrunnerOrb" and child:IsA("BasePart") then
-		return emplaceObject(child, PartESP.new("WindrunnerOrb", child, "Windrunner Orb"))
-	end
-
+	-- Many specific object ESPs were removed per user preference.
 	if name == "DepthsWhirlpool" then
 		return emplaceObject(child, ModelESP.new("Whirlpool", child, "Whirlpool"))
 	end
@@ -70944,60 +70920,10 @@ onWorkspaceChildAdded = LPH_NO_VIRTUALIZE(function(child)
 		return emplaceObject(child, PartESP.new("BagDrop", child, "Sack"))
 	end
 
-	if name == "MinistryCacheIndicator" then
-		return emplaceObject(child, PartESP.new("MinistryCacheIndicator", child, "Ministry Cache Indicator"))
-	end
-
 	if name:match("GuildDoor") then
 		local doorName = child:GetAttribute("GuildName") or "Unidentified Guild Door"
 		return emplaceObject(child, PartESP.new("GuildDoor", child, doorName))
 	end
-
-	if name == "GuildBanner" then
-		return emplaceObject(child, ModelESP.new("GuildBanner", child, "Guild Banner"))
-	end
-
-	if name == "Obelisk" then
-		return emplaceObject(child, ObeliskESP.new("Obelisk", child, "Obelisk"))
-	end
-
-	if name:match("ArmorBrick") then
-		local billboardGui = child:FindFirstChild("BillboardGui")
-		local armorBrickLabel = billboardGui and billboardGui:FindFirstChild("TextLabel")
-		local armorBrickName = armorBrickLabel and armorBrickLabel.Text
-
-		if not armorBrickLabel then
-			armorBrickName = "Unknown Armor Brick"
-		end
-
-		return emplaceObject(child, PartESP.new("ArmorBrick", child, armorBrickName))
-	end
-
-	if name == "RareObelisk" then
-		return emplaceObject(child, ModelESP.new("RareObelisk", child, "Rare Obelisk"))
-	end
-
-	if name == "HealBrick" then
-		return emplaceObject(child, PartESP.new("HealBrick", child, "Heal Brick"))
-	end
-
-	if name == "MantraObelisk" then
-		return emplaceObject(child, ModelESP.new("MantraObelisk", child, "Mantra Obelisk"))
-	end
-
-	if name:match("Boundary") then
-		return emplaceObject(child, PartESP.new("VOIBoundaryESP", child, child.Name))
-	end
-
-	if child:GetAttribute("Rarity") and child:IsA("MeshPart") then
-		return emplaceObject(child, PartESP.new("VOIWeaponESP", child, child.Name))
-	end
-
-	visualsMaid:mark(TaskSpawner.spawn("Visuals_BRWeaponCheck", function()
-		if child:IsA("MeshPart") and child:WaitForChild("InteractPrompt", 0.1) and not name:match("Barrel") then
-			return emplaceObject(child, PartESP.new("BRWeapon", child, name))
-		end
-	end))
 end)
 
 ---On terrain added.
@@ -71369,49 +71295,7 @@ end
 return InstanceESP
 
 end)
-__bundle_register("Features/Visuals/Objects/ObeliskESP", function(require, _LOADED, __bundle_register, __bundle_modules)
----@module Features.Visuals.Objects.ModelESP
-local ModelESP = require("Features/Visuals/Objects/ModelESP")
-
----@module Utility.Configuration
-local Configuration = require("Utility/Configuration")
-
----@class ObeliskESP: ModelESP
-local ObeliskESP = setmetatable({}, { __index = ModelESP })
-ObeliskESP.__index = ObeliskESP
-ObeliskESP.__type = "ObeliskESP"
-
----Update ObeliskESP.
----@param self ObeliskESP
-ObeliskESP.update = LPH_NO_VIRTUALIZE(function(self)
-	local model = self.model
-
-	local bpart = model:FindFirstChild("BuzzPart")
-	if not bpart then
-		return self:visible(false)
-	end
-
-	local interactPrompt = bpart:FindFirstChildOfClass("ProximityPrompt")
-
-	if Configuration.idToggleValue(self.identifier, "HideIfTurnedOn") and not interactPrompt then
-		return self:visible(false)
-	end
-
-	ModelESP.update(self, {})
-end)
-
----Create new ObeliskESP object.
----@param identifier string
----@param model Model
----@param label string
-function ObeliskESP.new(identifier, model, label)
-	return setmetatable(ModelESP.new(identifier, model, label), ObeliskESP)
-end
-
--- Return ObeliskESP module.
-return ObeliskESP
-
-end)
+-- ObeliskESP module removed per user request.
 __bundle_register("Features/Visuals/Objects/ChestESP", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@module Features.Visuals.Objects.ModelESP
 local ModelESP = require("Features/Visuals/Objects/ModelESP")
@@ -73386,6 +73270,24 @@ return LPH_NO_VIRTUALIZE(function()
 			+ moveDirection.Unit * Configuration.expectOptionValue("SpeedhackSpeed")
 	end
 
+	---Update CFrame speed hack.
+	---@param rootPart BasePart
+	---@param humanoid Humanoid
+	---@param deltaTime number
+	local function updateCFrameSpeed(rootPart, humanoid, deltaTime)
+		if Configuration.expectToggleValue("Fly") then
+			return
+		end
+
+		local moveDirection = humanoid.MoveDirection
+		if not moveDirection or moveDirection.Magnitude <= 0.001 then
+			return
+		end
+
+		local speed = Configuration.expectOptionValue("CFrameSpeedMultiplier") or 8
+		rootPart.CFrame = rootPart.CFrame + moveDirection * (speed * deltaTime)
+	end
+
 	---Update infinite jump.
 	---@param rootPart BasePart
 	local function updateInfiniteJump(rootPart)
@@ -73568,6 +73470,11 @@ return LPH_NO_VIRTUALIZE(function()
 
 		if Configuration.expectToggleValue("Speedhack") then
 			updateSpeedHack(rootPart, humanoid)
+		end
+
+		-- CFrame Speed is standalone and can be used independently of Speedhack.
+		if Configuration.expectToggleValue("CFrameSpeed") then
+			updateCFrameSpeed(rootPart, humanoid, dt)
 		end
 
 		if Configuration.expectToggleValue("InfiniteJump") then
@@ -75611,25 +75518,6 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 		Suffix = "studs",
 	})
 
-	-- Persistable offset sliders for the label position (dragging will update these).
-	groupbox:AddSlider("NearbyPlayersOffsetX", {
-		Text = "Nearby X Offset",
-		Tooltip = "Horizontal offset (pixels) from center for the nearby players label.",
-		Default = 0,
-		Min = -1000,
-		Max = 1000,
-		Rounding = 0,
-	})
-
-	groupbox:AddSlider("NearbyPlayersOffsetY", {
-		Text = "Nearby Y Offset",
-		Tooltip = "Vertical offset (pixels) from top for the nearby players label.",
-		Default = 30,
-		Min = -1000,
-		Max = 1000,
-		Rounding = 0,
-	})
-
 
 	-- Build assistance moved to new Builder tab
 end
@@ -76007,29 +75895,16 @@ function VisualsTab.init(window)
 	VisualsTab.addChestESP(VisualsTab.initBaseESPSection("Chest", tab:AddDynamicGroupbox("Chest ESP")))
 	VisualsTab.initBaseESPSection("BagDrop", tab:AddDynamicGroupbox("Bag ESP"))
 	VisualsTab.addFilterESP(VisualsTab.initBaseESPSection("AreaMarker", tab:AddDynamicGroupbox("Area Marker ESP")))
-	VisualsTab.initBaseESPSection("VOIBoundaryESP", tab:AddDynamicGroupbox("VOI Boundary ESP"))
-	VisualsTab.initBaseESPSection("VOIWeaponESP", tab:AddDynamicGroupbox("VOI Weapon ESP"))
-	VisualsTab.initBaseESPSection("ShopESP", tab:AddDynamicGroupbox("Shop ESP"))
-	VisualsTab.initBaseESPSection("JobBoard", tab:AddDynamicGroupbox("Job Board ESP"))
-	VisualsTab.initBaseESPSection("Artifact", tab:AddDynamicGroupbox("Artifact ESP"))
-	VisualsTab.initBaseESPSection("WindrunnerOrb", tab:AddDynamicGroupbox("Windrunner Orb ESP"))
+	-- Removed VOI boundary/weapon, shop, job board, artifact, windrunner orb per user request.
 	VisualsTab.initBaseESPSection("Whirlpool", tab:AddDynamicGroupbox("Whirlpool ESP"))
-	VisualsTab.initBaseESPSection("ExplosiveBarrel", tab:AddDynamicGroupbox("Explosive Barrel ESP"))
-	VisualsTab.initBaseESPSection("MinistryCacheIndicator", tab:AddDynamicGroupbox("Ministry Cache ESP"))
+	-- ExplosiveBarrel removed per user request.
 	VisualsTab.initBaseESPSection("OwlFeathers", tab:AddDynamicGroupbox("Owl Feathers ESP"))
 	VisualsTab.initBaseESPSection("GuildDoor", tab:AddDynamicGroupbox("Guild Door ESP"))
-	VisualsTab.initBaseESPSection("GuildBanner", tab:AddDynamicGroupbox("Guild Banner ESP"))
-	VisualsTab.addObeliskESP(VisualsTab.initBaseESPSection("Obelisk", tab:AddDynamicGroupbox("Obelisk ESP")))
+	-- Removed GuildBanner and Obelisk ESPs per user request.
 	VisualsTab.addBoneAltarESP(VisualsTab.initBaseESPSection("BoneAltar", tab:AddDynamicGroupbox("Bone Altar ESP")))
 	VisualsTab.addFilterESP(VisualsTab.initBaseESPSection("Ingredient", tab:AddDynamicGroupbox("Ingredient ESP")))
-	VisualsTab.initBaseESPSection("BoneSpear", tab:AddDynamicGroupbox("Bone Spear ESP"))
-	VisualsTab.initBaseESPSection("ArmorBrick", tab:AddDynamicGroupbox("Armor Brick ESP"))
-	VisualsTab.initBaseESPSection("BellMeteor", tab:AddDynamicGroupbox("Bell Meteor ESP"))
-	VisualsTab.initBaseESPSection("RareObelisk", tab:AddDynamicGroupbox("Rare Obelisk ESP"))
-	VisualsTab.initBaseESPSection("HealBrick", tab:AddDynamicGroupbox("Heal Brick ESP"))
-	VisualsTab.initBaseESPSection("MantraObelisk", tab:AddDynamicGroupbox("Mantra Obelisk ESP"))
-	VisualsTab.initBaseESPSection("BRWeapon", tab:AddDynamicGroupbox("BR Weapon ESP"))
-	VisualsTab.initBaseESPSection("BellKey", tab:AddDynamicGroupbox("Bell Key ESP"))
+	-- Removed BoneSpear, ArmorBrick, BellMeteor, RareObelisk, HealBrick,
+	-- MantraObelisk, BRWeapon, BellKey per user request.
 end
 
 -- Return VisualsTab module.
@@ -76941,6 +76816,25 @@ function GameTab.initLocalCharacterSection(groupbox)
 		Max = 300,
 		Suffix = "/s",
 		Rounding = 0,
+	})
+
+	local cframeSpeedToggle = groupbox:AddToggle("CFrameSpeed", {
+		Text = "CFrame Speed",
+		Tooltip = "Use CFrame-based movement. Recommend on low speed, this feature will help your fight and make your combo/movement smoother.",
+		Default = false,
+	})
+
+	cframeSpeedToggle:AddKeyPicker("CFrameSpeedKeybind", { Default = "N/A", SyncToggleState = true, Text = "CFrame Speed" })
+
+	local cfsDepBox = groupbox:AddDependencyBox()
+
+	cfsDepBox:AddSlider("CFrameSpeedMultiplier", {
+		Text = "CFrame Speed Multiplier",
+		Default = 8,
+		Min = 1,
+		Max = 20,
+		Suffix = "x",
+		Rounding = 1,
 	})
 
 	local flyToggle = groupbox:AddToggle("Fly", {
