@@ -73850,8 +73850,8 @@ local renderStepped = Signal.new(runService.RenderStepped)
 local menuMaid = Maid.new()
 
 -- Constants.
-local VERSION = "serek hub"
-local WATERMARK_TITLE = "serek hub"
+local VERSION = "1.53"
+local WATERMARK_TITLE = "happdior hub evil flinky nation"
 
 -- Get game name dynamically.
 local gameName = "Unknown"
@@ -73861,10 +73861,10 @@ pcall(function()
 	gameName = productInfo.Name or "Unknown"
 end)
 
-local MENU_TITLE = "serek hub | " .. gameName
+local MENU_TITLE = "happdior hub evil flinky nation | " .. gameName
 
 if LRM_UserNote then
-	MENU_TITLE = string.format("(v%s) serek hub | %s", VERSION, gameName)
+	MENU_TITLE = string.format("(v%s) happdior hub evil flinky nation | %s", VERSION, gameName)
 end
 
 ---Initialize menu.
