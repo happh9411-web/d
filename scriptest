@@ -4225,8 +4225,13 @@ return LPH_NO_VIRTUALIZE(function()
 
 		BaseGroupbox.__index = Funcs
 		BaseGroupbox.__namecall = function(Table, Key, ...)
-			return Funcs[Key](...)
+			local fn = Funcs[Key]
+			if not fn then
+				error(("Attempt to call missing method '%s' of table"):format(tostring(Key)), 2)
+			end
+			return fn(Table, ...)
 		end
+		BaseGroupbox.__index = Funcs
 	end
 
 	-- < Create other UI elements >
