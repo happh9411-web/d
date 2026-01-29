@@ -75697,8 +75697,10 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 				if val then
 					pcall(updateNearbyPlayers)
 				else
-					nearbyMaid:clean()
+					if nearbyMaid then pcall(function() nearbyMaid:clean() end) end
 					nearbyGui = nil
+					if nearbySimpleMaid then pcall(function() nearbySimpleMaid:clean() end) end
+					nearbySimpleGui = nil
 				end
 			end)
 		end
