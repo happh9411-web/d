@@ -69473,6 +69473,8 @@ local builderAssistanceMaid = Maid.new()
 -- Nearby players UI
 local nearbyMaid = Maid.new()
 local nearbyGui = nil
+local nearbySimpleGui = nil
+local nearbySimpleMaid = Maid.new()
 local function ensureNearbyGui()
 	if nearbyGui and nearbyGui.Parent then
 		return nearbyGui
@@ -69551,6 +69553,76 @@ local function ensureNearbyGui()
 	return nearbyGui
 end
 
+-- Minimal independent nearby GUI (fallback if library GUI fails)
+local function ensureSimpleNearbyGui()
+	if nearbySimpleGui and nearbySimpleGui.Parent then
+		return nearbySimpleGui
+	end
+	local player = players.LocalPlayer
+	if not player then return nil end
+	local pg = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui")
+	nearbySimpleGui = Instance.new("ScreenGui")
+	nearbySimpleGui.Name = "LycorisNearbySimpleGui"
+	nearbySimpleGui.ResetOnSpawn = false
+	nearbySimpleGui.Parent = pg
+
+	local label = Instance.new("TextLabel")
+	label.Name = "NearbyPlayersSimpleLabel"
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	local savedPos = PersistentData.get("NearbyPlayersLabelPos")
+	if savedPos and type(savedPos) == "table" and savedPos.x and savedPos.y then
+		label.AnchorPoint = Vector2.new(0, 0)
+		label.Position = UDim2.new(0, savedPos.x, 0, savedPos.y)
+	else
+		label.Position = UDim2.new(0.5, 0, 0, 10)
+	end
+	label.Size = UDim2.new(0.6, 0, 0, 28)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255,255,255)
+	label.TextScaled = true
+	label.Font = Enum.Font.Gotham
+	label.Active = true
+	label.ZIndex = 1000
+	label.TextStrokeTransparency = 0.7
+	label.Text = ""
+	label.TextWrapped = true
+	label.Visible = false
+	label.Parent = nearbySimpleGui
+
+	nearbySimpleMaid:mark(nearbySimpleGui)
+
+	-- draggable
+	do
+		local dragging = false
+		local dragStart, startPos
+		label.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = label.AbsolutePosition
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						dragging = false
+						local abs = label.AbsolutePosition
+						PersistentData.set("NearbyPlayersLabelPos", { x = abs.X, y = abs.Y })
+						if Library and Library.AttemptSave then pcall(Library.AttemptSave, Library) end
+					end
+				end)
+			end
+		end)
+		userInputService.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				local delta = input.Position - dragStart
+				local newPos = startPos + delta
+				label.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+			end
+		end)
+	end
+
+	return nearbySimpleGui
+end
+
 local function updateNearbyPlayers()
 	if not Configuration.expectToggleValue("ShowNearbyPlayers") then
 		if nearbyGui then
@@ -69583,10 +69655,10 @@ local function updateNearbyPlayers()
 		end
 	end
 
-	local gui = ensureNearbyGui()
+	local gui = ensureNearbyGui() or ensureSimpleNearbyGui()
 	if not gui then return end
 	gui.Enabled = true
-	local label = gui:FindFirstChild("NearbyPlayersLabel")
+	local label = gui:FindFirstChild("NearbyPlayersLabel") or gui:FindFirstChild("NearbyPlayersSimpleLabel")
 	if label then
 		-- always show label when toggle enabled so user can drag/see it
 		label.Visible = true
