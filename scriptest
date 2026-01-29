@@ -69480,12 +69480,16 @@ local function ensureNearbyGui()
 	else
 		label.Position = UDim2.new(0.5, 0, 0, 10)
 	end
-	label.Size = UDim2.new(0.6, 0, 0, 28)
+	label.Size = UDim2.new(0.6, 0, 0, 40)
 	label.BackgroundTransparency = 1
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextColor3 = Color3.new(1, 1, 1)
 	label.TextScaled = true
-	label.Font = Enum.Font.Code
+	label.Font = Enum.Font.Gotham
+	label.Active = true
+	label.ZIndex = 10
+	label.TextStrokeTransparency = 0.7
 	label.Text = ""
+	label.TextWrapped = true
 	label.Visible = false
 	label.Parent = nearbyGui
 
@@ -69568,7 +69572,7 @@ local function updateNearbyPlayers()
 	if #names > 0 then
 		if label then
 			label.Visible = true
-			-- color and show closest only
+			-- color
 			local color = Configuration.expectOptionValue("NearbyPlayersColor")
 			if color then
 				pcall(function() label.TextColor3 = color end)
@@ -69578,17 +69582,32 @@ local function updateNearbyPlayers()
 				local bd = tonumber(b:match("%((%d+)%)")) or 0
 				return ad < bd
 			end)
-			label.Text = names[1]
+			-- show up to 10 nearby players joined by separator
+			local maxShow = 10
+			local toShow = {}
+			for i = 1, math.min(#names, maxShow) do
+				table.insert(toShow, names[i])
+			end
+			label.Text = table.concat(toShow, "   •   ")
 		end
 	else
 		if label then label.Visible = false; label.Text = "" end
 	end
 end
 
--- Keep nearby updater running every frame so distances update in real-time.
-visualsMaid:mark(renderStepped:connect("Visuals_NearbyUpdate", function()
-	pcall(updateNearbyPlayers)
-end))
+-- Throttle nearby updater to reduce load (updates every 0.25s)
+do
+	local acc = 0
+	local interval = 0.25
+	visualsMaid:mark(runService.Heartbeat:Connect("Visuals_NearbyUpdate", function(dt)
+		acc = acc + (dt or 0)
+		if acc < interval then
+			return
+		end
+		acc = 0
+		pcall(updateNearbyPlayers)
+	end))
+end
 
 -- Card frames.
 local cardFrames = {}
@@ -75580,6 +75599,18 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 	})
 
 
+	-- Nearby players options
+	groupbox:AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
+	groupbox:AddSlider("NearbyPlayersRadius", {
+		Text = "Nearby Radius",
+		Default = 600,
+		Min = 50,
+		Max = 2000,
+		Suffix = "studs",
+		Rounding = 0,
+	})
+
+
 	-- Build assistance moved to new Builder tab
 end
 
@@ -75936,16 +75967,7 @@ function VisualsTab.init(window)
 				Default = false,
 			})
 
-			-- Nearby players cosmetic options
-			top:AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
-			top:AddSlider("NearbyPlayersRadius", {
-				Text = "Nearby Radius",
-				Default = 600,
-				Min = 50,
-				Max = 2000,
-				Suffix = "studs",
-				Rounding = 0,
-			})
+			-- Nearby players cosmetic options moved to Visual Assistance
 		end
 	end)
 
