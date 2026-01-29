@@ -2718,7 +2718,11 @@ return LPH_NO_VIRTUALIZE(function()
 
 		BaseAddons.__index = Funcs
 		BaseAddons.__namecall = function(Table, Key, ...)
-			return Funcs[Key](...)
+			local fn = Funcs[Key]
+			if not fn then
+				error(("Attempt to call missing method '%s' of table"):format(tostring(Key)), 2)
+			end
+			return fn(Table, ...)
 		end
 	end
 
@@ -2788,9 +2792,7 @@ return LPH_NO_VIRTUALIZE(function()
 				Groupbox:Resize()
 			end
 
-			if not DoesWrap then
-				setmetatable(Label, BaseAddons)
-			end
+			setmetatable(Label, BaseAddons)
 
 			Groupbox:AddBlank(5)
 			Groupbox:Resize()
