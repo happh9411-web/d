@@ -69600,13 +69600,8 @@ local function updateNearbyPlayers()
 				local bd = tonumber(b:match("%((%d+)%)")) or 0
 				return ad < bd
 			end)
-			-- show up to 10 nearby players joined by separator
-			local maxShow = 10
-			local toShow = {}
-			for i = 1, math.min(#names, maxShow) do
-				table.insert(toShow, names[i])
-			end
-			label.Text = table.concat(toShow, "   •   ")
+			-- show nearest player only (name and distance)
+			label.Text = names[1]
 		end
 	else
 		if label then label.Visible = false; label.Text = "" end
@@ -75618,11 +75613,25 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 
 
 	-- Nearby players options
-	groupbox:AddToggle("ShowNearbyPlayers", {
+	local showNearbyToggle = groupbox:AddToggle("ShowNearbyPlayers", {
 		Text = "Show Nearby Players",
 		Tooltip = "Show nearest player and distance as a draggable white label.",
 		Default = false,
 	})
+
+	-- ensure immediate reaction when toggled
+	pcall(function()
+		if showNearbyToggle and type(showNearbyToggle.OnChanged) == "function" then
+			showNearbyToggle:OnChanged(function(val)
+				if val then
+					pcall(updateNearbyPlayers)
+				else
+					nearbyMaid:clean()
+					nearbyGui = nil
+				end
+			end)
+		end
+	end)
 
 	groupbox:AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
 	groupbox:AddSlider("NearbyPlayersRadius", {
