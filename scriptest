@@ -3,166 +3,148 @@ LRM_UserNote = true
 local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (function(superRequire)
 	local loadingPlaceholder = {[{}] = true}
 
-	local register
-	local modules = {}
+	local guiService = game:GetService("GuiService")
 
-	local require
-	local loaded = {}
+	-- Signals.
+	local renderStepped = Signal.new(runService.RenderStepped)
 
-	register = function(name, body)
-		if not modules[name] then
-			modules[name] = body
+	-- Maids.
+	local visualsMaid = Maid.new()
+	local builderAssistanceMaid = Maid.new()
+
+	-- Nearby players (clean, minimal implementation)
+	local Nearby = {
+		maid = Maid.new(),
+		gui = nil,
+		interval = 0.25,
+		acc = 0,
+	}
+
+	function Nearby:ensureGui()
+		if self.gui and self.gui.Parent then return self.gui end
+		local pl = players.LocalPlayer
+		if not pl then return nil end
+		local pg = pl:FindFirstChild("PlayerGui") or pl:WaitForChild("PlayerGui")
+		local sg = Instance.new("ScreenGui")
+		sg.Name = "LycorisNearbyPlayersGui"
+		sg.ResetOnSpawn = false
+		sg.Parent = pg
+
+		local label = Instance.new("TextLabel")
+		label.Name = "NearbyPlayersLabel"
+		label.AnchorPoint = Vector2.new(0.5, 0)
+		local savedPos = PersistentData.get("NearbyPlayersLabelPos")
+		if savedPos and type(savedPos) == "table" and savedPos.x and savedPos.y then
+			label.AnchorPoint = Vector2.new(0, 0)
+			label.Position = UDim2.new(0, savedPos.x, 0, savedPos.y)
+		else
+			label.Position = UDim2.new(0.5, 0, 0, 10)
 		end
+		label.Size = UDim2.new(0.6, 0, 0, 28)
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextScaled = false
+		label.Font = Enum.Font.Gotham
+		label.Active = true
+		label.ZIndex = 1000
+		label.TextStrokeTransparency = 0.7
+		label.Text = ""
+		label.TextWrapped = true
+		label.Visible = false
+		label.Parent = sg
+
+		-- draggable
+		do
+			local dragging = false
+			local dragStart, startPos
+			label.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					dragging = true
+					dragStart = input.Position
+					startPos = label.AbsolutePosition
+					input.Changed:Connect(function()
+						if input.UserInputState == Enum.UserInputState.End then
+							dragging = false
+							local abs = label.AbsolutePosition
+							PersistentData.set("NearbyPlayersLabelPos", { x = abs.X, y = abs.Y })
+							if Library and Library.AttemptSave then pcall(Library.AttemptSave, Library) end
+						end
+					end)
+				end
+			end)
+
+			userInputService.InputChanged:Connect(function(input)
+				if not dragging then return end
+				if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+					local delta = input.Position - dragStart
+					local newPos = startPos + delta
+					label.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+				end
+			end)
+		end
+
+		self.maid:mark(sg)
+		self.gui = sg
+		return sg
 	end
 
-	require = function(name)
-		local loadedModule = loaded[name]
+	function Nearby:hideGui()
+		if self.maid then pcall(function() self.maid:clean() end) end
+		self.gui = nil
+	end
 
-		if loadedModule then
-			if loadedModule == loadingPlaceholder then
-				return nil
-			end
-		else
-			if not modules[name] then
-				if not superRequire then
-					local identifier = type(name) == 'string' and '\"' .. name .. '\"' or tostring(name)
-					error('Tried to require ' .. identifier .. ', but no such module has been registered')
-				else
-					return superRequire(name)
+	function Nearby:update()
+		if not Configuration.expectToggleValue("ShowNearbyPlayers") then
+			if self.gui then self.gui.Enabled = false end
+			return
+		end
+
+		local lp = players.LocalPlayer
+		if not lp then return end
+		local char = lp.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if not hrp then if self.gui then self.gui.Enabled = false end return end
+
+		local radius = Configuration.expectOptionValue("NearbyPlayersRadius") or 600
+		local nearestName = nil
+		local nearestDist = math.huge
+		for _, p in ipairs(players:GetPlayers()) do
+			if p ~= lp then
+				local c = p.Character
+				local part = c and c:FindFirstChild("HumanoidRootPart")
+				if part then
+					local dist = (part.Position - hrp.Position).Magnitude
+					if dist <= radius and dist < nearestDist then
+						nearestDist = dist
+						nearestName = p.Name
+					end
 				end
 			end
-
-			loaded[name] = loadingPlaceholder
-			loadedModule = modules[name](require, loaded, register, modules)
-			loaded[name] = loadedModule
 		end
 
-		return loadedModule
+		local sg = self:ensureGui()
+		if not sg then return end
+		sg.Enabled = true
+		local label = sg:FindFirstChild("NearbyPlayersLabel")
+		if not label then return end
+		label.Visible = true
+		pcall(function()
+			label.TextColor3 = Configuration.expectOptionValue("NearbyPlayersColor") or Color3.fromRGB(255, 255, 255)
+		end)
+		if nearestName then
+			label.Text = string.format("%s (%.0f)", nearestName, nearestDist)
+		else
+			label.Text = "No nearby players"
+		end
 	end
 
-	return require, loaded, register, modules
-end)(require)
-__bundle_register("__root", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Check for table that is shared between executions.
-if not shared then
-	return warn("No shared, no script.")
-end
-
--- Wait for game to fully load before running.
-if not game:IsLoaded() then
-	game.Loaded:Wait()
-end
-
-local plr = game:GetService("Players").LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait()
-char:WaitForChild("Humanoid")
-char:WaitForChild("HumanoidRootPart")
-task.wait(2)
-
--- Initialize Luraph globals if they do not exist.
-loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
-
-getfenv().PP_SCRAMBLE_NUM = function(...)
-	return ...
-end
-
-getfenv().PP_SCRAMBLE_STR = function(...)
-	return ...
-end
-
-getfenv().PP_SCRAMBLE_RE_NUM = function(...)
-	return ...
-end
-
----@module Utility.Profiler
-local Profiler = require("Utility/Profiler")
-
----@module Lycoris
-local Lycoris = require("Lycoris")
-
----Find existing instances and initialize the script.
-local function initializeScript()
-	-- Check if there's already another instance.
-	if shared.Lycoris then
-		-- Detach previous instance.
-		shared.Lycoris.detach()
-
-		-- Share the previous state.
-		Lycoris.queued = shared.Lycoris.queued
-	end
-
-	-- Re-initialize under the new state.
-	shared.Lycoris = Lycoris
-	shared.Lycoris.init()
-end
-
----This is called when the initalization errors.
----@param error string
-local function onInitializeError(error)
-	-- Warn that an error happened while initializing.
-	warn("Failed to initialize.")
-	warn(error)
-
-	-- Warn traceback.
-	warn(debug.traceback())
-
-	-- Detach the current instance.
-	Lycoris.detach()
-end
-
--- Safely profile and initialize the script aswell as handle errors.
-Profiler.run("Main_InitializeScript", function(...)
-	return xpcall(initializeScript, onInitializeError, ...)
-end)
-
-end)
-__bundle_register("Lycoris", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Detach and initialize a Lycoris instance.
-local Lycoris = { queued = false, silent = false, dpscanning = false, norpc = false }
-
----@module Utility.Logger
-local Logger = require("Utility/Logger")
-
----@module Game.Hooking
-local Hooking = require("Game/Hooking")
-
----@module Menu
-local Menu = require("Menu")
-
----@module Features
-local Features = require("Features")
-
----@module Utility.ControlModule
-local ControlModule = require("Utility/ControlModule")
-
----@module Game.InputClient
-local InputClient = require("Game/InputClient")
-
----@module Game.PlayerScanning
-local PlayerScanning = require("Game/PlayerScanning")
-
----@module Game.Timings.SaveManager
-local SaveManager = require("Game/Timings/SaveManager")
-
----@module Features.Combat.StateListener
-local StateListener = require("Features/Combat/StateListener")
-
----@module Utility.PersistentData
-local PersistentData = require("Utility/PersistentData")
-
----@module Game.KeyHandling
-local KeyHandling = require("Game/KeyHandling")
-
----@module Game.QueuedBlocking
-local QueuedBlocking = require("Game/QueuedBlocking")
-
----@module Utility.Maid
-local Maid = require("Utility/Maid")
-
----@module Utility.Signal
-local Signal = require("Utility/Signal")
-
----@module Game.Timings.ModuleManager
+	-- Heartbeat updater
+	visualsMaid:mark(runService.Heartbeat:Connect("Visuals_NearbyUpdate", function(dt)
+		Nearby.acc = (Nearby.acc or 0) + (dt or 0)
+		if Nearby.acc < (Nearby.interval or 0.25) then return end
+		Nearby.acc = 0
+		pcall(function() Nearby:update() end)
+	end))
 local ModuleManager = require("Game/Timings/ModuleManager")
 
 ---@module Utility.CoreGuiManager
