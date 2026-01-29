@@ -75618,6 +75618,12 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 
 
 	-- Nearby players options
+	groupbox:AddToggle("ShowNearbyPlayers", {
+		Text = "Show Nearby Players",
+		Tooltip = "Show nearest player and distance as a draggable white label.",
+		Default = false,
+	})
+
 	groupbox:AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
 	groupbox:AddSlider("NearbyPlayersRadius", {
 		Text = "Nearby Radius",
@@ -75979,13 +75985,7 @@ function VisualsTab.init(window)
 	pcall(function()
 		local top = tab:AddLeftGroupbox("Visuals Quick")
 		if top then
-			top:AddToggle("ShowNearbyPlayers", {
-				Text = "Show Nearby Players",
-				Tooltip = "Show nearby players within 600 studs at the top of the screen.",
-				Default = false,
-			})
-
-			-- Nearby players cosmetic options moved to Visual Assistance
+			-- quick toggles (nearby players moved into Visual Assistance)
 		end
 	end)
 
