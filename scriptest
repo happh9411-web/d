@@ -3027,6 +3027,16 @@ return LPH_NO_VIRTUALIZE(function()
 			Groupbox:Resize()
 		end
 
+		---Delegate AddColorPicker calls on a groupbox to a created label.
+		---@param Idx string
+		---@param Info table
+		function Funcs:AddColorPicker(Idx, Info)
+			assert(type(Info) == "table", "AddColorPicker: Info must be a table.")
+			local title = Info.Title or Idx or "Color"
+			local Label = self:AddLabel(title)
+			return Label:AddColorPicker(Idx, Info)
+		end
+
 		---Add input function.
 		---@param Idx string
 		---@param Info table
