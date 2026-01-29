@@ -69587,24 +69587,23 @@ local function updateNearbyPlayers()
 	if not gui then return end
 	gui.Enabled = true
 	local label = gui:FindFirstChild("NearbyPlayersLabel")
-	if #names > 0 then
-		if label then
-			label.Visible = true
-			-- color
-			local color = Configuration.expectOptionValue("NearbyPlayersColor")
-			if color then
-				pcall(function() label.TextColor3 = color end)
-			end
+	if label then
+		-- always show label when toggle enabled so user can drag/see it
+		label.Visible = true
+		-- ensure readable white default
+		pcall(function() label.TextColor3 = Configuration.expectOptionValue("NearbyPlayersColor") or Color3.fromRGB(255, 255, 255) end)
+		label.TextScaled = true
+
+		if #names > 0 then
 			table.sort(names, function(a, b)
 				local ad = tonumber(a:match("%((%d+)%)")) or 0
 				local bd = tonumber(b:match("%((%d+)%)")) or 0
 				return ad < bd
 			end)
-			-- show nearest player only (name and distance)
 			label.Text = names[1]
+		else
+			label.Text = "No nearby players"
 		end
-	else
-		if label then label.Visible = false; label.Text = "" end
 	end
 end
 
@@ -75991,12 +75990,7 @@ function VisualsTab.init(window)
 	-- Create tab.
 	local tab = window:AddTab("Visuals")
 
-	pcall(function()
-		local top = tab:AddLeftGroupbox("Visuals Quick")
-		if top then
-			-- quick toggles (nearby players moved into Visual Assistance)
-		end
-	end)
+	-- Visuals Quick removed; quick toggles moved to their respective sections.
 
 	-- Initialize sections.
 	VisualsTab.initESPCustomization(tab:AddDynamicGroupbox("ESP Customization"))
