@@ -10,7 +10,165 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 	local loaded = {}
 
 	register = function(name, body)
-	end)
+		if not modules[name] then
+			modules[name] = body
+		end
+	end
+
+	require = function(name)
+		local loadedModule = loaded[name]
+
+		if loadedModule then
+			if loadedModule == loadingPlaceholder then
+				return nil
+			end
+		else
+			if not modules[name] then
+				if not superRequire then
+					local identifier = type(name) == 'string' and '\"' .. name .. '\"' or tostring(name)
+					error('Tried to require ' .. identifier .. ', but no such module has been registered')
+				else
+					return superRequire(name)
+				end
+			end
+
+			loaded[name] = loadingPlaceholder
+			loadedModule = modules[name](require, loaded, register, modules)
+			loaded[name] = loadedModule
+		end
+
+		return loadedModule
+	end
+
+	return require, loaded, register, modules
+end)(require)
+__bundle_register("__root", function(require, _LOADED, __bundle_register, __bundle_modules)
+-- Check for table that is shared between executions.
+if not shared then
+	return warn("No shared, no script.")
+end
+
+-- Wait for game to fully load before running.
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
+local plr = game:GetService("Players").LocalPlayer
+local char = plr.Character or plr.CharacterAdded:Wait()
+char:WaitForChild("Humanoid")
+char:WaitForChild("HumanoidRootPart")
+task.wait(2)
+
+-- Initialize Luraph globals if they do not exist.
+loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
+
+getfenv().PP_SCRAMBLE_NUM = function(...)
+	return ...
+end
+
+getfenv().PP_SCRAMBLE_STR = function(...)
+	return ...
+end
+
+getfenv().PP_SCRAMBLE_RE_NUM = function(...)
+	return ...
+end
+
+---@module Utility.Profiler
+local Profiler = require("Utility/Profiler")
+
+---@module Lycoris
+local Lycoris = require("Lycoris")
+
+---Find existing instances and initialize the script.
+local function initializeScript()
+	-- Check if there's already another instance.
+	if shared.Lycoris then
+		-- Detach previous instance.
+		shared.Lycoris.detach()
+
+		-- Share the previous state.
+		Lycoris.queued = shared.Lycoris.queued
+	end
+
+	-- Re-initialize under the new state.
+	shared.Lycoris = Lycoris
+	shared.Lycoris.init()
+end
+
+---This is called when the initalization errors.
+---@param error string
+local function onInitializeError(error)
+	-- Warn that an error happened while initializing.
+	warn("Failed to initialize.")
+	warn(error)
+
+	-- Warn traceback.
+	warn(debug.traceback())
+
+	-- Detach the current instance.
+	Lycoris.detach()
+end
+
+-- Safely profile and initialize the script aswell as handle errors.
+Profiler.run("Main_InitializeScript", function(...)
+	return xpcall(initializeScript, onInitializeError, ...)
+end)
+
+end)
+__bundle_register("Lycoris", function(require, _LOADED, __bundle_register, __bundle_modules)
+-- Detach and initialize a Lycoris instance.
+local Lycoris = { queued = false, silent = false, dpscanning = false, norpc = false }
+
+---@module Utility.Logger
+local Logger = require("Utility/Logger")
+
+---@module Game.Hooking
+local Hooking = require("Game/Hooking")
+
+---@module Menu
+local Menu = require("Menu")
+
+---@module Features
+local Features = require("Features")
+
+---@module Utility.ControlModule
+local ControlModule = require("Utility/ControlModule")
+
+---@module Game.InputClient
+local InputClient = require("Game/InputClient")
+
+---@module Game.PlayerScanning
+local PlayerScanning = require("Game/PlayerScanning")
+
+---@module Game.Timings.SaveManager
+local SaveManager = require("Game/Timings/SaveManager")
+
+---@module Features.Combat.StateListener
+local StateListener = require("Features/Combat/StateListener")
+
+---@module Utility.PersistentData
+local PersistentData = require("Utility/PersistentData")
+
+---@module Game.KeyHandling
+local KeyHandling = require("Game/KeyHandling")
+
+---@module Game.QueuedBlocking
+local QueuedBlocking = require("Game/QueuedBlocking")
+
+---@module Utility.Maid
+local Maid = require("Utility/Maid")
+
+---@module Utility.Signal
+local Signal = require("Utility/Signal")
+
+---@module Game.Timings.ModuleManager
+local ModuleManager = require("Game/Timings/ModuleManager")
+
+---@module Utility.CoreGuiManager
+local CoreGuiManager = require("Utility/CoreGuiManager")
+
+---@module Game.ServerHop
 local ServerHop = require("Game/ServerHop")
 
 ---@module Game.Wipe
@@ -8629,9 +8787,6 @@ local Tweening = { active = false, queue = {} }
 ---@module Utility.Configuration
 local Configuration = require("Utility/Configuration")
 
----@module Utility.PersistentData
-local PersistentData = require("Utility/PersistentData")
-
 -- Services.
 local players = game:GetService("Players")
 
@@ -15881,12 +16036,12 @@ local INTERNAL_MODULES = {
         		radiantKickTiming.iae = true
         		radiantKickTiming.cbm = true
 
-	        	local action = Action.new()
-	        	action._when = 600
-	        	action._type = "Parry"
-	        	action.hitbox = Vector3.new(100, 100, 100)
-	        	action.name = "Radiant Kick Shared"
-	        	return self:action(radiantKickTiming, action)
+        		local action = Action.new()
+				action._when = 600
+        		action._type = "Parry"
+        		action.hitbox = Vector3.new(100, 100, 100)
+        		action.name = "Radiant Kick Shared"
+        		return self:action(radiantKickTiming, action)
         	end
 
         	local firstPartTiming = Timing.new()
@@ -16898,21 +17053,21 @@ local INTERNAL_MODULES = {
         		return
         	end
 
-        	timing.fhb = true
-        	timing.duih = true
-        	timing.rpue = false
-        	timing.hitbox = Vector3.new(10, 10, 17.5)
+			timing.fhb = true
+			timing.duih = true
+			timing.rpue = false
+			timing.hitbox = Vector3.new(10, 10, 20)
 
         	self:hook("stopped", function(...)
         		return not track.IsPlaying
         	end)
 
-			local action = Action.new()
+        	local action = Action.new()
 			action._when = 0
 			action._type = "Parry"
 			action.hitbox = Vector3.new(10, 10, 20)
-			action.name = "Shoulder Bash Far"
-			self:action(timing, action)
+        	action.name = "Shoulder Bash Far"
+        	self:action(timing, action)
         end
     end,
     ["SilentheartHeavyMayhem"] = function()
@@ -17457,7 +17612,48 @@ local INTERNAL_MODULES = {
         	return self:action(timing, action)
         end
     end,
-    -- TelegraphMajor removed (Lord Regent Lariat + Teleport Up)
+    ["TelegraphMajor"] = function()
+        ---@type Action
+        local Action = getfenv().Action
+
+        ---@module Modules.Globals.Waiter
+        local Waiter = getfenv().Waiter
+
+        ---@module Utility.Finder
+        local Finder = getfenv().Finder
+
+        -- Services.
+        local players = game:GetService("Players")
+
+        ---Module function.
+        ---@param self SoundDefender
+        ---@param timing SoundTiming
+        return function(self, timing)
+        	if not self.owner then
+        		return
+        	end
+
+        	local localCharacter = players.LocalPlayer and players.LocalPlayer.Character
+        	if not localCharacter then
+        		return
+        	end
+
+        	if self.owner ~= localCharacter then
+        		return
+        	end
+
+        	if not Finder.entity("lordregent") then
+        		return
+        	end
+
+        	local action = Action.new()
+        	action._when = 1000
+        	action._type = "Teleport Up"
+        	action.ihbc = true
+        	action.name = "Lord Regent Lariat"
+        	self:action(timing, action)
+        end
+    end,
     ["TelegraphMinor"] = function()
         ---@type Action
         local Action = getfenv().Action
@@ -64589,50 +64785,86 @@ end
 return PlayerScanning
 
 end)
-__bundle_register("Features/Visuals/Objects/ObeliskESP", function(require, _LOADED, __bundle_register, __bundle_modules)
----@module Features.Visuals.Objects.ModelESP
-local ModelESP = require("Features/Visuals/Objects/ModelESP")
+__bundle_register("Features/Combat/Objects/Task", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Utility.TaskSpawner
+local TaskSpawner = require("Utility/TaskSpawner")
 
 ---@module Utility.Configuration
 local Configuration = require("Utility/Configuration")
 
----@class ObeliskESP: ModelESP
-local ObeliskESP = setmetatable({}, { __index = ModelESP })
-ObeliskESP.__index = ObeliskESP
-ObeliskESP.__type = "ObeliskESP"
+---@class Task
+---@field thread thread
+---@field identifier string
+---@field when number A timestamp when the task will be executed.
+---@field punishable number A window in seconds where the task can be punished.
+---@field after number A window in seconds where the task can be executed.
+---@field delay function
+local Task = {}
+Task.__index = Task
 
----Update ObeliskESP.
----@param self ObeliskESP
-ObeliskESP.update = LPH_NO_VIRTUALIZE(function(self)
-	local model = self.model
-
-	local bpart = model:FindFirstChild("BuzzPart")
-	if not bpart then
-		return self:visible(false)
+---Check if task should block the input.
+---@return boolean
+Task.blocking = LPH_NO_VIRTUALIZE(function(self)
+	if not (coroutine.status(self.thread) ~= "dead") then
+		return false
 	end
 
-	local interactPrompt = bpart:FindFirstChildOfClass("ProximityPrompt")
-
-	if Configuration.idToggleValue(self.identifier, "HideIfTurnedOn") and not interactPrompt then
-		return self:visible(false)
+	-- We've exceeded the execution time. Block if we're within the after window.
+	if os.clock() >= self:when() then
+		return os.clock() <= self:when() + self.after
 	end
 
-	ModelESP.update(self, {})
+	---@note: Allow us to do inputs up until a certain amount of time before the task happens.
+	return os.clock() >= self:when() - self.punishable
 end)
 
----Create new ObeliskESP object.
+---Cancel task.
+Task.cancel = LPH_NO_VIRTUALIZE(function(self)
+	if coroutine.status(self.thread) ~= "suspended" then
+		return
+	end
+
+	task.cancel(self.thread)
+end)
+
+---Get when approximately the task will be executed.
+---@return number
+Task.when = LPH_NO_VIRTUALIZE(function(self)
+	return self.when + self.delay()
+end)
+
+---Create new Task object.
 ---@param identifier string
----@param model Model
----@param label string
-function ObeliskESP.new(identifier, model, label)
-	return setmetatable(ModelESP.new(identifier, model, label), ObeliskESP)
-end
+---@param delay function
+---@param punishable number
+---@param after number
+---@param callback function
+---@vararg any
+---@return Task
+Task.new = LPH_NO_VIRTUALIZE(function(identifier, delay, punishable, after, callback, ...)
+	local self = setmetatable({}, Task)
+	self.identifier = identifier
+	self.delay = delay
+	self.punishable = punishable
+	self.after = after
+	self.thread = TaskSpawner.delay("Action_" .. identifier, delay, callback, ...)
+	self.forced = false
 
--- Return ObeliskESP module.
-return ObeliskESP
+	if not self.punishable or self.punishable <= 0 then
+		self.punishable = Configuration.expectOptionValue("DefaultPunishableWindow") or 0.7
+	end
+
+	if not self.after or self.after <= 0 then
+		self.after = Configuration.expectOptionValue("DefaultAfterWindow") or 0.1
+	end
+
+	return self
+end)
+
+-- Return Task module.
+return Task
 
 end)
- 
 __bundle_register("Features/Combat/Objects/SoundDefender", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@module Features.Combat.Objects.Defender
 local Defender = require("Features/Combat/Objects/Defender")
@@ -65562,7 +65794,6 @@ end
 -- Return AnimatorDefender module.
 return AnimatorDefender
 
-end)
 end)
 __bundle_register("Game/Timings/PlaybackData", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class PlaybackData
@@ -69189,7 +69420,8 @@ local Table = require("Utility/Table")
 ---@module Utility.Logger
 local Logger = require("Utility/Logger")
 
--- ObeliskESP removed per user preference.
+---@module Features.Visuals.Objects.ObeliskESP
+local ObeliskESP = require("Features/Visuals/Objects/ObeliskESP")
 
 ---@module Features.Visuals.Objects.BoneAltarESP
 local BoneAltarESP = require("Features/Visuals/Objects/BoneAltarESP")
@@ -69223,10 +69455,6 @@ local builderAssistanceMaid = Maid.new()
 -- Nearby players UI
 local nearbyMaid = Maid.new()
 local nearbyGui = nil
--- dragging state
-local nearbyDragging = false
-local nearbyDragStart = nil
-local nearbyStartPos = nil
 local function ensureNearbyGui()
 	if nearbyGui and nearbyGui.Parent then
 		return nearbyGui
@@ -69244,52 +69472,60 @@ local function ensureNearbyGui()
 	local label = Instance.new("TextLabel")
 	label.Name = "NearbyPlayersLabel"
 	label.AnchorPoint = Vector2.new(0.5, 0)
-	-- Restore saved position from persistent storage if present.
+	-- restore saved position if present (stored as absolute pixels)
 	local savedPos = PersistentData.get("NearbyPlayersLabelPos")
-	if type(savedPos) == "table" then
-		label.Position = UDim2.new(savedPos.XScale or 0.5, savedPos.X or 0, savedPos.YScale or 0, savedPos.Y or 30)
+	if savedPos and type(savedPos) == "table" and savedPos.x and savedPos.y then
+		label.AnchorPoint = Vector2.new(0, 0)
+		label.Position = UDim2.new(0, savedPos.x, 0, savedPos.y)
 	else
-		label.Position = UDim2.new(0.5, 0, 0, 30)
+		label.Position = UDim2.new(0.5, 0, 0, 10)
 	end
 	label.Size = UDim2.new(0.6, 0, 0, 28)
 	label.BackgroundTransparency = 1
-	label.TextColor3 = Configuration.expectOptionValue("NearbyPlayersColor") or Color3.fromRGB(255, 255, 255)
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.TextScaled = true
-	label.Font = Enum.Font.JosefinSans
+	label.Font = Enum.Font.Code
 	label.Text = ""
 	label.Visible = false
 	label.Parent = nearbyGui
 
-	-- enable input and dragging for label
-	label.Active = true
-	label.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			nearbyDragging = true
-			nearbyDragStart = input.Position
-			nearbyStartPos = label.Position
-			local changedConn
-			changedConn = input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					nearbyDragging = false
-					-- Persist final label position into PersistentData.
-					local finalPos = label.Position
-					pcall(function()
-						PersistentData.set("NearbyPlayersLabelPos", {
-							X = finalPos.X.Offset,
-							Y = finalPos.Y.Offset,
-							XScale = finalPos.X.Scale,
-							YScale = finalPos.Y.Scale,
-						})
-					end)
-					changedConn:Disconnect()
-				end
-			end)
-		end
-	end)
-
-    label.Visible = false
+	-- single label only (no button)
+	label.Visible = false
 
 	nearbyMaid:mark(nearbyGui)
+
+	-- Draggable persistence
+	do
+		local dragging = false
+		local dragInput, dragStart, startPos
+
+		label.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = label.AbsolutePosition
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						dragging = false
+						-- save absolute position
+						local abs = label.AbsolutePosition
+						PersistentData.set("NearbyPlayersLabelPos", { x = abs.X, y = abs.Y })
+						if Library and Library.AttemptSave then pcall(Library.AttemptSave, Library) end
+					end
+				end)
+			end
+		end)
+
+		userInputService.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				local delta = input.Position - dragStart
+				local newPos = startPos + delta
+				label.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+			end
+		end)
+	end
 	return nearbyGui
 end
 
@@ -69311,13 +69547,13 @@ local function updateNearbyPlayers()
 	end
 
 	local names = {}
+	local radius = Configuration.expectOptionValue("NearbyPlayersRadius") or 600
 	for _, p in ipairs(players:GetPlayers()) do
 		if p ~= localPlayer then
 			local c = p.Character
 			local part = c and c:FindFirstChild("HumanoidRootPart")
 			if part then
 				local dist = (part.Position - hrp.Position).Magnitude
-				local radius = Configuration.expectOptionValue("NearbyPlayersRadius") or 600
 				if dist <= radius then
 					table.insert(names, string.format("%s (%.0f)", p.Name, dist))
 				end
@@ -69329,14 +69565,14 @@ local function updateNearbyPlayers()
 	if not gui then return end
 	gui.Enabled = true
 	local label = gui:FindFirstChild("NearbyPlayersLabel")
-	-- refresh color from config in case user changed it
-	if label then
-		label.TextColor3 = Configuration.expectOptionValue("NearbyPlayersColor") or Color3.fromRGB(255, 255, 255)
-	end
 	if #names > 0 then
 		if label then
 			label.Visible = true
-			-- show closest only
+			-- color and show closest only
+			local color = Configuration.expectOptionValue("NearbyPlayersColor")
+			if color then
+				pcall(function() label.TextColor3 = color end)
+			end
 			table.sort(names, function(a, b)
 				local ad = tonumber(a:match("%((%d+)%)")) or 0
 				local bd = tonumber(b:match("%((%d+)%)")) or 0
@@ -69352,26 +69588,6 @@ end
 -- Keep nearby updater running every frame so distances update in real-time.
 visualsMaid:mark(renderStepped:connect("Visuals_NearbyUpdate", function()
 	pcall(updateNearbyPlayers)
-end))
-
--- global input change watcher for dragging
-visualsMaid:mark(userInputService.InputChanged:connect("Visuals_NearbyDrag", function(input)
-	if not nearbyDragging then return end
-	if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
-	if not nearbyDragStart or not nearbyStartPos then return end
-	local delta = input.Position - nearbyDragStart
-	local newX = nearbyStartPos.X.Offset + delta.X
-	local newY = nearbyStartPos.Y.Offset + delta.Y
-	-- clamp to screen bounds
-	newX = math.clamp(newX, -1000, 1000)
-	newY = math.clamp(newY, -1000, 1000)
-	local gui = nearbyGui
-	if gui then
-		local label = gui:FindFirstChild("NearbyPlayersLabel")
-		if label then
-			label.Position = UDim2.new(nearbyStartPos.X.Scale, newX, nearbyStartPos.Y.Scale, newY)
-		end
-	end
 end))
 
 -- Card frames.
@@ -69395,7 +69611,7 @@ local showRobloxChatMap = visualsMaid:mark(OriginalStoreManager.new())
 local noAnimatedSeaMap = visualsMaid:mark(OriginalStoreManager.new())
 local noPersistentMap = visualsMaid:mark(OriginalStoreManager.new())
 local buildAssistanceMap = visualsMaid:mark(OriginalStoreManager.new())
--- JobBoard support removed per user preference.
+local jobBoardMap = visualsMaid:mark(OriginalStoreManager.new())
 
 ---Update chain of perfection tracker.
 local updateChainOfPerfectionTracker = LPH_NO_VIRTUALIZE(function()
@@ -70408,9 +70624,16 @@ local updateNoAnimatedSea = LPH_NO_VIRTUALIZE(function()
 	end
 end)
 
----Update terrain attachments (job board removed).
+---Update terrain attachments.
 local updateTerrainAttachments = LPH_NO_VIRTUALIZE(function()
-	-- No-op: JobBoard/JobTracker handling removed.
+	for _, attachment in next, attachments do
+		local jtg = attachment:FindFirstChild("JobTrackerGui")
+		if not jtg then
+			continue
+		end
+
+		jobBoardMap:add(jtg, "MaxDistance", Configuration.idOptionValue("JobBoard", "MaxDistance") or 1e9)
+	end
 end)
 
 ---Update ESP.
@@ -70440,7 +70663,11 @@ local updateVisuals = LPH_NO_VIRTUALIZE(function()
 
 	lastVisualsUpdate = os.clock()
 
-	-- JobBoard handling removed.
+	if Configuration.idToggleValue("JobBoard", "Enable") then
+		updateTerrainAttachments()
+	else
+		jobBoardMap:restore()
+	end
 
 	if Configuration.expectToggleValue("ChainOfPerfectionTracker") then
 		updateChainOfPerfectionTracker()
@@ -70533,7 +70760,10 @@ end)
 ---On NPCs ChildAdded.
 ---@param child Instance
 local onNPCsChildAdded = LPH_NO_VIRTUALIZE(function(child)
-	-- Windrunner orb support removed; treat as generic NPC.
+	if child.Name == "WindrunnerOrb" and child:IsA("BasePart") then
+		return emplaceObject(child, PartESP.new("WindrunnerOrb", child, "Windrunner Orb"))
+	end
+
 	return emplaceObject(child, ModelESP.new("NPC", child, child.Name))
 end)
 
@@ -70547,13 +70777,33 @@ end)
 ---@param child Instance
 local onThrownChildAdded = LPH_NO_VIRTUALIZE(function(child)
 	local name = child.Name
-	-- Removed Artifact, MinistryCacheIndicator, BellMeteor, ExplosiveBarrel, BoneSpear special cases.
+
+	if name == "MinistryCacheIndicator" then
+		return emplaceObject(child, PartESP.new("MinistryCacheIndicator", child, "Ministry Cache Indicator"))
+	end
+
+	if name == "BigArtifact" and child:IsA("Model") then
+		return emplaceObject(child, ModelESP.new("Artifact", child, "Artifact"))
+	end
+
+	if name == "BellMeteor" then
+		return emplaceObject(child, ModelESP.new("BellMeteor", child, "Bell Meteor"))
+	end
+
+	if name == "ExplodeCrate" then
+		return emplaceObject(child, PartESP.new("ExplosiveBarrel", child, "Explosive Barrel"))
+	end
+
 	if name == "BagDrop" then
 		return emplaceObject(child, PartESP.new("BagDrop", child, "Bag"))
 	end
 
 	if name == "EventFeatherRef" then
 		return emplaceObject(child, PartESP.new("OwlFeathers", child, "Owl Feathers"))
+	end
+
+	if name == "BoneSpear" then
+		return emplaceObject(child, PartESP.new("BoneSpear", child, "Bone Spear"))
 	end
 
 	visualsMaid:mark(TaskSpawner.spawn("Visuals_ChestCheck", function()
@@ -70574,8 +70824,17 @@ end)
 ---On Shop ChildAdded.
 ---@param child Instance
 local onShopChildAdded = LPH_NO_VIRTUALIZE(function(child)
-	-- Shop ESP removed per user request.
-	return
+	local name = child.Name
+
+	if not child:FindFirstChild("Cost") then
+		return
+	end
+
+	if child:IsA("Model") then
+		return emplaceObject(child, ModelESP.new("ShopESP", child, name))
+	end
+
+	return emplaceObject(child, PartESP.new("ShopESP", child, name))
 end)
 
 ---Create listener.
@@ -70638,7 +70897,32 @@ onWorkspaceChildAdded = LPH_NO_VIRTUALIZE(function(child)
 		return createListener(child, "TrueAvatarBossRoom", onAvatarRoomDescendantAdded, onInstanceRemoving, false)
 	end
 
-	-- Many specific object ESPs were removed per user preference.
+	if name == "BellKeys" then
+		for _, descendant in next, child:GetDescendants() do
+			if not descendant:IsA("BasePart") then
+				continue
+			end
+
+			if descendant.Name ~= "BellKey" then
+				continue
+			end
+
+			return emplaceObject(descendant, PartESP.new("BellKey", descendant, "Bell Key"))
+		end
+	end
+
+	if name == "JobBoard" then
+		return emplaceObject(child, ModelESP.new("JobBoard", child, "Job Board"))
+	end
+
+	if name == "BigArtifact" and child:IsA("Model") then
+		return emplaceObject(child, ModelESP.new("Artifact", child, "Artifact"))
+	end
+
+	if name == "WindrunnerOrb" and child:IsA("BasePart") then
+		return emplaceObject(child, PartESP.new("WindrunnerOrb", child, "Windrunner Orb"))
+	end
+
 	if name == "DepthsWhirlpool" then
 		return emplaceObject(child, ModelESP.new("Whirlpool", child, "Whirlpool"))
 	end
@@ -70647,10 +70931,60 @@ onWorkspaceChildAdded = LPH_NO_VIRTUALIZE(function(child)
 		return emplaceObject(child, PartESP.new("BagDrop", child, "Sack"))
 	end
 
+	if name == "MinistryCacheIndicator" then
+		return emplaceObject(child, PartESP.new("MinistryCacheIndicator", child, "Ministry Cache Indicator"))
+	end
+
 	if name:match("GuildDoor") then
 		local doorName = child:GetAttribute("GuildName") or "Unidentified Guild Door"
 		return emplaceObject(child, PartESP.new("GuildDoor", child, doorName))
 	end
+
+	if name == "GuildBanner" then
+		return emplaceObject(child, ModelESP.new("GuildBanner", child, "Guild Banner"))
+	end
+
+	if name == "Obelisk" then
+		return emplaceObject(child, ObeliskESP.new("Obelisk", child, "Obelisk"))
+	end
+
+	if name:match("ArmorBrick") then
+		local billboardGui = child:FindFirstChild("BillboardGui")
+		local armorBrickLabel = billboardGui and billboardGui:FindFirstChild("TextLabel")
+		local armorBrickName = armorBrickLabel and armorBrickLabel.Text
+
+		if not armorBrickLabel then
+			armorBrickName = "Unknown Armor Brick"
+		end
+
+		return emplaceObject(child, PartESP.new("ArmorBrick", child, armorBrickName))
+	end
+
+	if name == "RareObelisk" then
+		return emplaceObject(child, ModelESP.new("RareObelisk", child, "Rare Obelisk"))
+	end
+
+	if name == "HealBrick" then
+		return emplaceObject(child, PartESP.new("HealBrick", child, "Heal Brick"))
+	end
+
+	if name == "MantraObelisk" then
+		return emplaceObject(child, ModelESP.new("MantraObelisk", child, "Mantra Obelisk"))
+	end
+
+	if name:match("Boundary") then
+		return emplaceObject(child, PartESP.new("VOIBoundaryESP", child, child.Name))
+	end
+
+	if child:GetAttribute("Rarity") and child:IsA("MeshPart") then
+		return emplaceObject(child, PartESP.new("VOIWeaponESP", child, child.Name))
+	end
+
+	visualsMaid:mark(TaskSpawner.spawn("Visuals_BRWeaponCheck", function()
+		if child:IsA("MeshPart") and child:WaitForChild("InteractPrompt", 0.1) and not name:match("Barrel") then
+			return emplaceObject(child, PartESP.new("BRWeapon", child, name))
+		end
+	end))
 end)
 
 ---On terrain added.
@@ -71022,7 +71356,49 @@ end
 return InstanceESP
 
 end)
--- ObeliskESP module removed per user request.
+__bundle_register("Features/Visuals/Objects/ObeliskESP", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@module Features.Visuals.Objects.ModelESP
+local ModelESP = require("Features/Visuals/Objects/ModelESP")
+
+---@module Utility.Configuration
+local Configuration = require("Utility/Configuration")
+
+---@class ObeliskESP: ModelESP
+local ObeliskESP = setmetatable({}, { __index = ModelESP })
+ObeliskESP.__index = ObeliskESP
+ObeliskESP.__type = "ObeliskESP"
+
+---Update ObeliskESP.
+---@param self ObeliskESP
+ObeliskESP.update = LPH_NO_VIRTUALIZE(function(self)
+	local model = self.model
+
+	local bpart = model:FindFirstChild("BuzzPart")
+	if not bpart then
+		return self:visible(false)
+	end
+
+	local interactPrompt = bpart:FindFirstChildOfClass("ProximityPrompt")
+
+	if Configuration.idToggleValue(self.identifier, "HideIfTurnedOn") and not interactPrompt then
+		return self:visible(false)
+	end
+
+	ModelESP.update(self, {})
+end)
+
+---Create new ObeliskESP object.
+---@param identifier string
+---@param model Model
+---@param label string
+function ObeliskESP.new(identifier, model, label)
+	return setmetatable(ModelESP.new(identifier, model, label), ObeliskESP)
+end
+
+-- Return ObeliskESP module.
+return ObeliskESP
+
+end)
 __bundle_register("Features/Visuals/Objects/ChestESP", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@module Features.Visuals.Objects.ModelESP
 local ModelESP = require("Features/Visuals/Objects/ModelESP")
@@ -72997,12 +73373,6 @@ return LPH_NO_VIRTUALIZE(function()
 			+ moveDirection.Unit * Configuration.expectOptionValue("SpeedhackSpeed")
 	end
 
-	---Update CFrame speed hack.
-	---@param rootPart BasePart
-	---@param humanoid Humanoid
-	---@param deltaTime number
-
-
 	---Update infinite jump.
 	---@param rootPart BasePart
 	local function updateInfiniteJump(rootPart)
@@ -73186,8 +73556,6 @@ return LPH_NO_VIRTUALIZE(function()
 		if Configuration.expectToggleValue("Speedhack") then
 			updateSpeedHack(rootPart, humanoid)
 		end
-
-
 
 		if Configuration.expectToggleValue("InfiniteJump") then
 			updateInfiniteJump(rootPart)
@@ -73627,8 +73995,8 @@ local renderStepped = Signal.new(runService.RenderStepped)
 local menuMaid = Maid.new()
 
 -- Constants.
-local VERSION = "1.55"
-local WATERMARK_TITLE = "YSL"
+local VERSION = "1.53"
+local WATERMARK_TITLE = "happdior hub evil flinky nation"
 
 -- Get game name dynamically.
 local gameName = "Unknown"
@@ -73638,10 +74006,10 @@ pcall(function()
 	gameName = productInfo.Name or "Unknown"
 end)
 
-local MENU_TITLE = "YSL | " .. gameName
+local MENU_TITLE = "happdior hub evil flinky nation | " .. gameName
 
 if LRM_UserNote then
-	MENU_TITLE = string.format("(v%s) YSL | %s", VERSION, gameName)
+	MENU_TITLE = string.format("(v%s) happdior hub evil flinky nation | %s", VERSION, gameName)
 end
 
 ---Initialize menu.
@@ -75211,25 +75579,6 @@ function VisualsTab.initVisualAssistanceSection(groupbox)
 		Default = false,
 	})
 
-	groupbox:AddToggle("ShowNearbyPlayers", {
-		Text = "Show Nearby Players",
-		Tooltip = "Show nearby players within 600 studs at the top of the screen.",
-		Default = false,
-	})
-
-	groupbox:AddLabel("Nearby Players Color"):AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
-
-	-- Detection radius slider (up to 2000 studs).
-	groupbox:AddSlider("NearbyPlayersRadius", {
-		Text = "Nearby Radius",
-		Tooltip = "Maximum distance (studs) to consider a player 'nearby'.",
-		Default = 600,
-		Min = 0,
-		Max = 2000,
-		Rounding = 0,
-		Suffix = "studs",
-	})
-
 
 	-- Build assistance moved to new Builder tab
 end
@@ -75581,7 +75930,22 @@ function VisualsTab.init(window)
 	pcall(function()
 		local top = tab:AddLeftGroupbox("Visuals Quick")
 		if top then
-			-- Visuals Quick (kept minimal)
+			top:AddToggle("ShowNearbyPlayers", {
+				Text = "Show Nearby Players",
+				Tooltip = "Show nearby players within 600 studs at the top of the screen.",
+				Default = false,
+			})
+
+			-- Nearby players cosmetic options
+			top:AddColorPicker("NearbyPlayersColor", { Default = Color3.fromRGB(255, 255, 255) })
+			top:AddSlider("NearbyPlayersRadius", {
+				Text = "Nearby Radius",
+				Default = 600,
+				Min = 50,
+				Max = 2000,
+				Suffix = "studs",
+				Rounding = 0,
+			})
 		end
 	end)
 
@@ -75607,16 +75971,29 @@ function VisualsTab.init(window)
 	VisualsTab.addChestESP(VisualsTab.initBaseESPSection("Chest", tab:AddDynamicGroupbox("Chest ESP")))
 	VisualsTab.initBaseESPSection("BagDrop", tab:AddDynamicGroupbox("Bag ESP"))
 	VisualsTab.addFilterESP(VisualsTab.initBaseESPSection("AreaMarker", tab:AddDynamicGroupbox("Area Marker ESP")))
-	-- Removed VOI boundary/weapon, shop, job board, artifact, windrunner orb per user request.
+	VisualsTab.initBaseESPSection("VOIBoundaryESP", tab:AddDynamicGroupbox("VOI Boundary ESP"))
+	VisualsTab.initBaseESPSection("VOIWeaponESP", tab:AddDynamicGroupbox("VOI Weapon ESP"))
+	VisualsTab.initBaseESPSection("ShopESP", tab:AddDynamicGroupbox("Shop ESP"))
+	VisualsTab.initBaseESPSection("JobBoard", tab:AddDynamicGroupbox("Job Board ESP"))
+	VisualsTab.initBaseESPSection("Artifact", tab:AddDynamicGroupbox("Artifact ESP"))
+	VisualsTab.initBaseESPSection("WindrunnerOrb", tab:AddDynamicGroupbox("Windrunner Orb ESP"))
 	VisualsTab.initBaseESPSection("Whirlpool", tab:AddDynamicGroupbox("Whirlpool ESP"))
-	-- ExplosiveBarrel removed per user request.
+	VisualsTab.initBaseESPSection("ExplosiveBarrel", tab:AddDynamicGroupbox("Explosive Barrel ESP"))
+	VisualsTab.initBaseESPSection("MinistryCacheIndicator", tab:AddDynamicGroupbox("Ministry Cache ESP"))
 	VisualsTab.initBaseESPSection("OwlFeathers", tab:AddDynamicGroupbox("Owl Feathers ESP"))
 	VisualsTab.initBaseESPSection("GuildDoor", tab:AddDynamicGroupbox("Guild Door ESP"))
-	-- Removed GuildBanner and Obelisk ESPs per user request.
+	VisualsTab.initBaseESPSection("GuildBanner", tab:AddDynamicGroupbox("Guild Banner ESP"))
+	VisualsTab.addObeliskESP(VisualsTab.initBaseESPSection("Obelisk", tab:AddDynamicGroupbox("Obelisk ESP")))
 	VisualsTab.addBoneAltarESP(VisualsTab.initBaseESPSection("BoneAltar", tab:AddDynamicGroupbox("Bone Altar ESP")))
 	VisualsTab.addFilterESP(VisualsTab.initBaseESPSection("Ingredient", tab:AddDynamicGroupbox("Ingredient ESP")))
-	-- Removed BoneSpear, ArmorBrick, BellMeteor, RareObelisk, HealBrick,
-	-- MantraObelisk, BRWeapon, BellKey per user request.
+	VisualsTab.initBaseESPSection("BoneSpear", tab:AddDynamicGroupbox("Bone Spear ESP"))
+	VisualsTab.initBaseESPSection("ArmorBrick", tab:AddDynamicGroupbox("Armor Brick ESP"))
+	VisualsTab.initBaseESPSection("BellMeteor", tab:AddDynamicGroupbox("Bell Meteor ESP"))
+	VisualsTab.initBaseESPSection("RareObelisk", tab:AddDynamicGroupbox("Rare Obelisk ESP"))
+	VisualsTab.initBaseESPSection("HealBrick", tab:AddDynamicGroupbox("Heal Brick ESP"))
+	VisualsTab.initBaseESPSection("MantraObelisk", tab:AddDynamicGroupbox("Mantra Obelisk ESP"))
+	VisualsTab.initBaseESPSection("BRWeapon", tab:AddDynamicGroupbox("BR Weapon ESP"))
+	VisualsTab.initBaseESPSection("BellKey", tab:AddDynamicGroupbox("Bell Key ESP"))
 end
 
 -- Return VisualsTab module.
@@ -76529,7 +76906,6 @@ function GameTab.initLocalCharacterSection(groupbox)
 		Suffix = "/s",
 		Rounding = 0,
 	})
-
 
 	local flyToggle = groupbox:AddToggle("Fly", {
 		Text = "Fly",
